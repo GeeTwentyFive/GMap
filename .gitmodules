@@ -1,0 +1,15 @@
+[submodule "libs/libGWindower"]
+	path = libs/libGWindower
+	url = https://github.com/GeeTwentyFive/libGWindower.git
+[submodule "libs/libGRenderer3D"]
+	path = libs/libGRenderer3D
+	url = https://github.com/GeeTwentyFive/libGRenderer3D.git
+[submodule "libs/imgui"]
+	path = libs/imgui
+	url = https://github.com/ocornut/imgui.git
+[submodule "libs/json"]
+	path = libs/json
+	url = https://github.com/nlohmann/json.git
+[submodule "libs/ImGuizmo"]
+	path = libs/ImGuizmo
+	url = https://github.com/CedricGuillemet/ImGuizmo.git
