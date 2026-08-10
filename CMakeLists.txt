@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.30...4.4)
-project(<NAME>)
+project(GMap)
 set(CMAKE_CXX_EXTENSIONS OFF)
 add_compile_options("-fno-fast-math" "-ffp-contract=off" "-fprotect-parens")
 
