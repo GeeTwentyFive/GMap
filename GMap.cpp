@@ -59,8 +59,13 @@ struct MapObjectInstance {  // Output: name, [pos], [rot], [scale], [color], [ex
         nlohmann::json extra_data;  // ^ extra_data
 };
 
+// for each key in `keys`: if `src` contains key: `dest[key] = src[key]`  // (for overriding defaults, if overrides are present)
+void JSONAddIfHasKeys(const nlohmann::json &src, nlohmann::json &dest, const std::vector<std::string> keys) {
+        for (const std::string& key : keys) { if (src.contains(key)) dest[key] = src[key]; }
+}
+
 // returns `""` on true, missing key on false
-std::string JSONHasKeys(nlohmann::json json, std::vector<std::string> keys) { for (const std::string& key : keys) { if (!json.contains(key)) return key; }  return ""; }
+std::string JSONHasKeys(const nlohmann::json &json, const std::vector<std::string> keys) { for (const std::string& key : keys) { if (!json.contains(key)) return key; }  return ""; }
 
 int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(CONFIG_FILE)) { std::ofstream(CONFIG_FILE) << std::setw(4) << DEFAULT_CONFIG << std::endl; throw std::runtime_error(CONFIG_FILE + " not found; new one has been created with global defaults. Populate its OBJECTS array with MapObjects"); }
         nlohmann::json config; std::ifstream(CONFIG_FILE) >> config; if (!config.contains("GLOBAL_SETTINGS")) throw std::runtime_error(CONFIG_FILE + " is missing key GLOBAL_SETTINGS"); if (!config.contains("OBJECTS")) throw std::runtime_error(CONFIG_FILE + " is missing key OBJECTS");
@@ -71,9 +76,13 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
         GRenderer3D gr3d;
 
         std::unordered_map<std::string, MapObject> registered_map_objects;
-        // ^ TODO: loop through config["OBJECTS"] -> add
-        // ^ MAKE SURE TO CHECK IF ALREADY REGISTERED WHILE ADDING
-        // ^ + CHECK IF MODEL EXISTS AT PATH (+ optionally texture)
+        for (const auto& map_object : config["OBJECTS"]) {
+                MapObject registration;
+                // TODO: name (if blank, use model file basename) -> check if already registered
+                // TODO: `gr3d_mesh_id` from `model` (check if exists at path) (+ optionally .png texture, if exists)
+                JSONAddIfHasKeys(map_object, registration.config, {"extra_data", "override_translate", "override_rotate", "override_scale", "override_bounds", "override_coloring", "singleton"});
+                registered_map_objects[map_object["name"]] = registration;
+        }
 
         // TODO: if (argc > 1): try to load map argv[1]
 return 0; } catch (const std::exception& e) { std::cout << e.what() << std::endl; return 1; } }
