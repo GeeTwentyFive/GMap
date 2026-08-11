@@ -33,18 +33,22 @@ const nlohmann::json DEFAULT_CONFIG = nlohmann::json::parse(R"({
 })");
 
 const nlohmann::json MAPOBJECT_BASE = nlohmann::json::parse(R"({
-        "model": "",
-        "name": "",
-        "extra_data": [],
-        "override_translate": false,
-        "override_rotate": false,
-        "override_scale": false,
-        "override_bounds": false,
-        "override_coloring": false,
-        "singleton": false,
-        "pos": [0.0, 0.0, 0.0],
-        "rot": [0.0, 0.0, 0.0],
-        "scale": [1.0, 1.0, 1.0]
+        "CONFIG": {
+                "model": "",
+                "name": "",
+                "extra_data": [],
+                "override_translate": false,
+                "override_rotate": false,
+                "override_scale": false,
+                "override_bounds": false,
+                "override_coloring": false,
+                "singleton": false
+        },
+        "MAP_DATA": {
+                "pos": [0.0, 0.0, 0.0],
+                "rot": [0.0, 0.0, 0.0],
+                "scale": [1.0, 1.0, 1.0]
+        }
 })");
 
 // returns `""` on true, missing key on false
@@ -55,7 +59,9 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
         std::string _result; _result = JSONHasKeys(config["GLOBAL_SETTINGS"], {"disable_bounds", "disable_coloring", "disable_rotate", "disable_scale", "disable_translate", "force_grid_snap", "x_max", "x_min", "y_max", "y_min", "z_max", "z_min"}); if (_result != "") throw std::runtime_error(CONFIG_FILE + " is missing key " + _result + " in GLOBAL_SETTINGS");
         if (config["OBJECTS"].size() == 0) throw std::runtime_error(CONFIG_FILE + " has no MapObjects in OBJECTS array");
 
-        // TODO
+        // TODO: Register map objects
 
-        return 0;
-} catch (const std::exception& e) { std::cout << e.what() << std::endl; return 1; } }
+        // TODO: nlohmann::json map_objects = nlohmann::json::array();
+
+        // TODO: if (argc > 1): try to load map argv[1]
+return 0; } catch (const std::exception& e) { std::cout << e.what() << std::endl; return 1; } }
