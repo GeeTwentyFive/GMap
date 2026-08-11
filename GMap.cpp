@@ -35,7 +35,6 @@ const nlohmann::json DEFAULT_CONFIG = nlohmann::json::parse(R"({
 const nlohmann::json MAPOBJECT_BASE = nlohmann::json::parse(R"({
         "CONFIG": {
                 "model": "",
-                "name": "",
                 "extra_data": [],
                 "override_translate": false,
                 "override_rotate": false,
@@ -60,8 +59,7 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
         if (config["OBJECTS"].size() == 0) throw std::runtime_error(CONFIG_FILE + " has no MapObjects in OBJECTS array");
 
         // TODO: Register map objects
-
-        // TODO: nlohmann::json map_objects = nlohmann::json::array();
+        // ^ nlohmann::json registered_map_objects = nlohmann::json::object();  // key is "name"
 
         // TODO: if (argc > 1): try to load map argv[1]
 return 0; } catch (const std::exception& e) { std::cout << e.what() << std::endl; return 1; } }
