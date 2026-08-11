@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.30...4.4)
 project(GMap)
 set(CMAKE_CXX_EXTENSIONS OFF)
-add_compile_options("-fno-fast-math" "-ffp-contract=off" "-fprotect-parens")
+add_compile_options("-fno-fast-math" "-ffp-contract=off")
 
 add_executable(${PROJECT_NAME}
 	"GMap.cpp"
@@ -35,6 +35,7 @@ target_include_directories(dear_imgui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/libs/i
 
 set(IMGUIZMO_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
 add_subdirectory("libs/ImGuizmo")
+target_link_libraries(imguizmo PRIVATE dear_imgui)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
         GMAP_glad
