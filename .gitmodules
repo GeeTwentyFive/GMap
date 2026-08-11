@@ -22,3 +22,6 @@
 [submodule "libs/GOBJ"]
 	path = libs/GOBJ
 	url = https://github.com/GeeTwentyFive/GOBJ.git
+[submodule "libs/GFramePacer"]
+	path = libs/GFramePacer
+	url = https://github.com/GeeTwentyFive/GFramePacer.git
