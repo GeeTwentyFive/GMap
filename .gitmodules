@@ -16,3 +16,9 @@
 [submodule "libs/linalg"]
 	path = libs/linalg
 	url = https://github.com/sgorsten/linalg.git
+[submodule "libs/stb"]
+	path = libs/stb
+	url = https://github.com/nothings/stb.git
+[submodule "libs/GOBJ"]
+	path = libs/GOBJ
+	url = https://github.com/GeeTwentyFive/GOBJ.git
