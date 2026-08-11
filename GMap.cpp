@@ -1,12 +1,16 @@
+#include <cstdint>
 #include <exception>
-#include <nlohmann/json.hpp>
-
 #include <filesystem>
 #include <fstream>
 #include <stdexcept>
 #include <string>
 #include <iostream>
 #include <vector>
+#include <stdint.h>
+#include <unordered_map>
+
+#include <nlohmann/json.hpp>
+#include <GRenderer3D.hpp>
 
 
 #define ERROR(msg) throw std::runtime_error(std::string("[ERROR] ") + __FILE__ + "@" + std::to_string(__LINE__) + " (" + __func__ + "): " + (msg))
@@ -32,9 +36,10 @@ const nlohmann::json DEFAULT_CONFIG = nlohmann::json::parse(R"({
         "OBJECTS": []
 })");
 
-const nlohmann::json MAPOBJECT_BASE = nlohmann::json::parse(R"({
-        "CONFIG": {
+struct MapObject {
+        nlohmann::json config = nlohmann::json::parse(R"({
                 "model": "",
+                "name": "",
                 "extra_data": [],
                 "override_translate": false,
                 "override_rotate": false,
@@ -42,13 +47,15 @@ const nlohmann::json MAPOBJECT_BASE = nlohmann::json::parse(R"({
                 "override_bounds": false,
                 "override_coloring": false,
                 "singleton": false
-        },
-        "MAP_DATA": {
-                "pos": [0.0, 0.0, 0.0],
-                "rot": [0.0, 0.0, 0.0],
-                "scale": [1.0, 1.0, 1.0]
-        }
-})");
+        })");;
+        uint64_t gr3d_mesh_id;
+};
+
+struct MapObjectInstance {  // Output: name, [pos], [rot], [scale], [color], [extra_data]
+        MapObject* base;  // ^ name
+        GRenderer3D::MeshInstance* mesh_instance;  // ^ pos, rot, scale, color
+        nlohmann::json extra_data;  // ^ extra_data
+};
 
 // returns `""` on true, missing key on false
 std::string JSONHasKeys(nlohmann::json json, std::vector<std::string> keys) { for (const std::string& key : keys) { if (!json.contains(key)) return key; }  return ""; }
@@ -58,8 +65,8 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
         std::string _result; _result = JSONHasKeys(config["GLOBAL_SETTINGS"], {"disable_bounds", "disable_coloring", "disable_rotate", "disable_scale", "disable_translate", "force_grid_snap", "x_max", "x_min", "y_max", "y_min", "z_max", "z_min"}); if (_result != "") throw std::runtime_error(CONFIG_FILE + " is missing key " + _result + " in GLOBAL_SETTINGS");
         if (config["OBJECTS"].size() == 0) throw std::runtime_error(CONFIG_FILE + " has no MapObjects in OBJECTS array");
 
-        // TODO: Register map objects
-        // ^ nlohmann::json registered_map_objects = nlohmann::json::object();  // key is "name"
+        std::unordered_map<std::string, MapObject> registered_map_objects;
+        // ^ TODO: loop through config["OBJECTS"] -> add
         // ^ MAKE SURE TO CHECK IF ALREADY REGISTERED WHILE ADDING
 
         // TODO: if (argc > 1): try to load map argv[1]
