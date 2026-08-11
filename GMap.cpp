@@ -60,6 +60,7 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
 
         // TODO: Register map objects
         // ^ nlohmann::json registered_map_objects = nlohmann::json::object();  // key is "name"
+        // ^ MAKE SURE TO CHECK IF ALREADY REGISTERED WHILE ADDING
 
         // TODO: if (argc > 1): try to load map argv[1]
 return 0; } catch (const std::exception& e) { std::cout << e.what() << std::endl; return 1; } }
