@@ -14,8 +14,7 @@
 
 const std::string CONFIG_FILE = "GMap.json";
 
-const nlohmann::json DEFAULT_CONFIG = nlohmann::json::parse(R"(
-{
+const nlohmann::json DEFAULT_CONFIG = nlohmann::json::parse(R"({
         "GLOBAL_SETTINGS": {
                 "disable_bounds": true,
                 "disable_coloring": true,
@@ -31,8 +30,22 @@ const nlohmann::json DEFAULT_CONFIG = nlohmann::json::parse(R"(
                 "z_min": -340282346638528859811704183484516925440.0
         },
         "OBJECTS": []
-}
-)");
+})");
+
+const nlohmann::json MAPOBJECT_BASE = nlohmann::json::parse(R"({
+        "model": "",
+        "name": "",
+        "extra_data": [],
+        "override_translate": false,
+        "override_rotate": false,
+        "override_scale": false,
+        "override_bounds": false,
+        "override_coloring": false,
+        "singleton": false,
+        "pos": [0.0, 0.0, 0.0],
+        "rot": [0.0, 0.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+})");
 
 // returns `""` on true, missing key on false
 std::string JSONHasKeys(nlohmann::json json, std::vector<std::string> keys) { for (const std::string& key : keys) { if (!json.contains(key)) return key; }  return ""; }
