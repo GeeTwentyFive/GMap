@@ -10,6 +10,8 @@
 #include <unordered_map>
 
 #include <nlohmann/json.hpp>
+#include <GWindower.hpp>
+#include <glad/glad.h>
 #include <GRenderer3D.hpp>
 
 
@@ -65,9 +67,13 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
         std::string _result; _result = JSONHasKeys(config["GLOBAL_SETTINGS"], {"disable_bounds", "disable_coloring", "disable_rotate", "disable_scale", "disable_translate", "force_grid_snap", "x_max", "x_min", "y_max", "y_min", "z_max", "z_min"}); if (_result != "") throw std::runtime_error(CONFIG_FILE + " is missing key " + _result + " in GLOBAL_SETTINGS");
         if (config["OBJECTS"].size() == 0) throw std::runtime_error(CONFIG_FILE + " has no MapObjects in OBJECTS array");
 
+        GWindower gw{0, 0, 4, 6}; if (!gladLoadGL()) ERROR("Failed to load OpenGL");
+        GRenderer3D gr3d;
+
         std::unordered_map<std::string, MapObject> registered_map_objects;
         // ^ TODO: loop through config["OBJECTS"] -> add
         // ^ MAKE SURE TO CHECK IF ALREADY REGISTERED WHILE ADDING
+        // ^ + CHECK IF MODEL EXISTS AT PATH (+ optionally texture)
 
         // TODO: if (argc > 1): try to load map argv[1]
 return 0; } catch (const std::exception& e) { std::cout << e.what() << std::endl; return 1; } }
