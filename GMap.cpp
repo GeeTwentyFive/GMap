@@ -143,6 +143,7 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
 
         ImGui::CreateContext(); ImGui_ImplGlfw_InitForOpenGL((GLFWwindow*)(gw._glfwWindow), true); ImGui_ImplOpenGL3_Init("#version 460 core"); ImGui::GetIO().ConfigFlags |= (ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_NoMouseCursorChange);
         ImGui::GetIO().IniFilename = NULL; // TODO: imgui.ini in app(argv[0] end)-named dir in OS temp. dir
+        // ^ OR: DockBuilder API
 
         // TEMP; TEST:
         InstantiateMapObject("Cube");
@@ -169,7 +170,7 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                         ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame(); ImGui::NewFrame(); ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
 
                         // TEMP; TEST:
-                        ImGui::Begin("INSPECTOR"); {
+                        ImGui::Begin("INSPECTOR", NULL, ImGuiWindowFlags_AlwaysAutoResize); {
                                 ImGui::Text("TEST");
                         } ImGui::End();
 
