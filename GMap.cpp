@@ -42,27 +42,6 @@ const nlohmann::json DEFAULT_CONFIG = nlohmann::json::parse(R"({
         "OBJECTS": []
 })");
 
-struct MapObject {
-        nlohmann::json config = nlohmann::json::parse(R"({
-                "model": "",
-                "name": "",
-                "extra_data": [],
-                "override_translate": false,
-                "override_rotate": false,
-                "override_scale": false,
-                "override_bounds": false,
-                "override_coloring": false,
-                "singleton": false
-        })");;
-        uint64_t gr3d_mesh_id;
-};
-
-struct MapObjectInstance {  // Output: name, [pos], [rot], [scale], [color], [extra_data]
-        MapObject* base;  // ^ name
-        GRenderer3D::MeshInstance* mesh_instance;  // ^ pos, rot, scale, color
-        nlohmann::json extra_data;  // ^ extra_data
-};
-
 // for each key in `keys`: if `src` contains key: `dest[key] = src[key]`  // (for overriding defaults, if overrides are present)
 void JSONAddIfHasKeys(const nlohmann::json &src, nlohmann::json &dest, const std::vector<std::string> keys) {
         for (const std::string& key : keys) { if (src.contains(key)) dest[key] = src[key]; }
@@ -79,6 +58,20 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
         GWindower gw{0, 0, 4, 6}; if (!gladLoadGL()) ERROR("Failed to load OpenGL");
         GRenderer3D gr3d;
 
+        struct MapObject {
+                nlohmann::json config = nlohmann::json::parse(R"({
+                        "model": "",
+                        "name": "",
+                        "extra_data": [],
+                        "override_translate": false,
+                        "override_rotate": false,
+                        "override_scale": false,
+                        "override_bounds": false,
+                        "override_coloring": false,
+                        "singleton": false
+                })");
+                uint64_t gr3d_mesh_id;
+        };
         std::unordered_map<std::string, MapObject> registered_map_objects;
         for (const auto& map_object : config["OBJECTS"]) { if (!map_object.contains("model")) throw std::runtime_error(std::string("MapObject ") + std::string(map_object["name"]) + " is missing key " + R"("model")");
                 MapObject registration; JSONAddIfHasKeys(map_object, registration.config, {"model", "name", "extra_data", "override_translate", "override_rotate", "override_scale", "override_bounds", "override_coloring", "singleton"}); if (!map_object.contains("name") || map_object["name"] == "") { registration.config["name"] = std::filesystem::path(map_object["model"]).stem().string(); } if (registered_map_objects.contains(registration.config["name"])) throw std::runtime_error(std::string("MapObject with name ") + std::string(registration.config["name"]) + " is already registered");
@@ -104,6 +97,38 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                 }
                 registered_map_objects[registration.config["name"]] = registration;
         }
+
+        struct MapObjectInstance {  // Output: name, [pos], [rot], [scale], [color], [extra_data]
+                uint64_t uid;
+                MapObject* base;  // ^ name
+                GRenderer3D::MeshInstance* mesh_instance;  // ^ pos, rot, scale, color
+                nlohmann::json extra_data;  // ^ extra_data
+        };
+        std::vector<MapObjectInstance> map_object_instances;
+        auto InstantiateMapObject = [&](
+                std::string base,
+                float pos_x = 0.0f, float pos_y = 0.0f, float pos_z = 0.0f,
+                float rot_x_degrees = 0.0f, float rot_y_degrees = 0.0f, float rot_z_degrees = 0.0f,
+                float scale_x = 1.0f, float scale_y = 1.0f, float scale_z = 1.0f,
+                uint32_t color_shift_RGBA = 0xFFFFFFFF
+        ) -> MapObjectInstance* { if (!registered_map_objects.contains(base)) ERROR(base + " not found in registered map objects");
+                static uint64_t _last_uid = 0;
+                MapObjectInstance* instance = &map_object_instances.emplace_back();
+                instance->uid = _last_uid; _last_uid++;
+                instance->base = &registered_map_objects[base];
+                instance->extra_data = instance->base->config["extra_data"];
+                instance->mesh_instance = gr3d.AddMesh(instance->base->gr3d_mesh_id);
+                return instance;
+        };
+        auto RemoveMapObject = [&](uint64_t uid) {
+                for (auto it = map_object_instances.begin(); it != map_object_instances.end(); it++) {
+                        if (it->uid == uid) {
+                                it->mesh_instance->Remove();
+                                map_object_instances.erase(it); return;
+                        }
+                }
+                ERROR(std::string("Failed to find & erase MapObjectInstance with uid ") + std::to_string(uid));
+        };
 
         // TODO: if (argc > 1): try to load map argv[1]
 return 0; } catch (const std::exception& e) { std::cout << e.what() << std::endl; return 1; } }
