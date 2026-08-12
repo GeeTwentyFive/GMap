@@ -110,7 +110,7 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
         auto InstantiateMapObject = [&](
                 std::string base,
                 float pos_x = 0.0f, float pos_y = 0.0f, float pos_z = 0.0f,
-                float rot_x_degrees = 0.0f, float rot_y_degrees = 0.0f, float rot_z_degrees = 0.0f,
+                float quat_x = 0.0f, float quat_y = 0.0f, float quat_z = 0.0f, float quat_w = 0.0f,
                 float scale_x = 1.0f, float scale_y = 1.0f, float scale_z = 1.0f,
                 uint32_t color_shift_RGBA = 0xFFFFFFFF
         ) -> MapObjectInstance* { if (!registered_map_objects.contains(base)) ERROR(base + " not found in registered map objects");
@@ -121,7 +121,7 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                 instance->extra_data = instance->base->config["extra_data"];
                 instance->mesh_instance = gr3d.AddMesh(instance->base->gr3d_mesh_id);
                 instance->mesh_instance->position[0] = pos_x; instance->mesh_instance->position[1] = pos_y; instance->mesh_instance->position[2] = pos_z;
-                instance->mesh_instance->RotateXEuler(rot_x_degrees); instance->mesh_instance->RotateYEuler(rot_y_degrees); instance->mesh_instance->RotateZEuler(rot_z_degrees);
+                instance->mesh_instance->rotation[0] = quat_x; instance->mesh_instance->rotation[1] = quat_y; instance->mesh_instance->rotation[2] = quat_z; instance->mesh_instance->rotation[3] = quat_w;
                 instance->mesh_instance->scale[0] = scale_x; instance->mesh_instance->scale[1] = scale_y; instance->mesh_instance->scale[2] = scale_z;
                 instance->mesh_instance->color_RGBA = color_shift_RGBA;
                 return instance;
@@ -137,9 +137,6 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
         };
 
         // TODO: if (argc > 1): try to load map argv[1]
-
-        // TEMP; TEST:
-        InstantiateMapObject("Cube");
 
         glClearColor(0.0, 0.0, 0.0, 1.0);
         GFramePacer gfp; gfp.target_frametime_ms = 1.0;  // (frame limiting itself not needed because using v-sync (and wait-until-input), using lib for other frame-pacing-related benefits)
