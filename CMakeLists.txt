@@ -32,6 +32,7 @@ add_library(dear_imgui
         "libs/imgui/backends/imgui_impl_opengl3.cpp"
 )
 target_include_directories(dear_imgui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/libs/imgui")
+target_compile_definitions(dear_imgui PRIVATE "IMGUI_IMPL_GLFW_DISABLE_X11")
 
 set(IMGUIZMO_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
 add_subdirectory("libs/ImGuizmo")

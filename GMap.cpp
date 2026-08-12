@@ -24,6 +24,9 @@
 #include <GFramePacer/GFramePacer.hpp>
 #include <linalg/linalg.h>
 using namespace linalg::aliases;
+#include <imgui/imgui.h>
+#include <imgui/backends/imgui_impl_glfw.h>
+#include <imgui/backends/imgui_impl_opengl3.h>
 
 
 #define ERROR(msg) throw std::runtime_error(std::string("[ERROR] ") + __FILE__ + "@" + std::to_string(__LINE__) + " (" + __func__ + "): " + (msg))
@@ -138,6 +141,9 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
 
         // TODO: if (argc > 1): try to load map argv[1]
 
+        ImGui::CreateContext(); ImGui_ImplGlfw_InitForOpenGL((GLFWwindow*)(gw._glfwWindow), true); ImGui_ImplOpenGL3_Init("#version 460 core"); ImGui::GetIO().ConfigFlags |= (ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_NoMouseCursorChange);
+        ImGui::GetIO().IniFilename = NULL; // TODO: imgui.ini in app(argv[0] end)-named dir in OS temp. dir
+
         // TEMP; TEST:
         InstantiateMapObject("Cube");
 
@@ -159,7 +165,19 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                         gr3d.camera_yaw += gw.mouse_x * CAMERA_SENSITIVITY;
                         gr3d.camera_pitch += gw.mouse_y * CAMERA_SENSITIVITY;
                 }
-                else { gw.locked_mouse = false; }
+                else { gw.locked_mouse = false;
+                        ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame(); ImGui::NewFrame(); ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
+
+                        // TEMP; TEST:
+                        ImGui::Begin("INSPECTOR"); {
+                                ImGui::Text("TEST");
+                        } ImGui::End();
+
+                        // TODO
+
+                        ImGui::Render();
+                }
+
                 static int camera_move_speed = STARTING_CAMERA_MOVE_SPEED;
                 if (gw.mouse_scroll_delta > 0.5 || gw.key_states[GWindower::KEY_UP]) camera_move_speed *= 2;
                 if (gw.mouse_scroll_delta < -0.5 || gw.key_states[GWindower::KEY_DOWN]) camera_move_speed /= 2;
@@ -176,6 +194,7 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                 if (gw.key_states[GWindower::KEY_ZERO]) { gr3d.camera_pos[0] = 0; gr3d.camera_pos[1] = 0; gr3d.camera_pos[2] = 0; }
 
                 gr3d.DrawFrame(gw.window_width, gw.window_height);
-                // TODO: ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+                if (!gw.mouse_button_states[GWindower::MOUSEBUTTON_RIGHT]) ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         }
+        ImGui_ImplOpenGL3_Shutdown(); ImGui_ImplGlfw_Shutdown(); ImGui::DestroyContext();
 return 0; } catch (const std::exception& e) { std::cout << e.what() << std::endl; return 1; } }
