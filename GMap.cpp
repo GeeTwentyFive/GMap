@@ -90,45 +90,52 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                 registered_map_objects[registration.config["name"]] = registration;
         }
 
-        // TEMP; TEST:
-        for (auto [k, v] : registered_map_objects) {
-                std::cout << "Name: " << k << std::endl;
-                std::cout << "Config: " << std::setw(4) << v.config << std::endl;
-                std::cout << "Registered Mesh ID: " << v.gr3d_mesh_id << std::endl;
-                std::cout << std::endl;
-        }
+        struct MapObjectInstance {  // Output: name, [pos], [rot], [scale], [color], [extra_data]
+                uint64_t uid;
+                MapObject* base;  // ^ name
+                GRenderer3D::MeshInstance* mesh_instance;  // ^ pos, rot, scale, color
+                nlohmann::json extra_data;  // ^ extra_data
+        };
+        std::vector<MapObjectInstance> map_object_instances;
+        auto InstantiateMapObject = [&](
+                std::string base,
+                float pos_x = 0.0f, float pos_y = 0.0f, float pos_z = 0.0f,
+                float rot_x_degrees = 0.0f, float rot_y_degrees = 0.0f, float rot_z_degrees = 0.0f,
+                float scale_x = 1.0f, float scale_y = 1.0f, float scale_z = 1.0f,
+                uint32_t color_shift_RGBA = 0xFFFFFFFF
+        ) -> MapObjectInstance* { if (!registered_map_objects.contains(base)) ERROR(base + " not found in registered map objects");
+                static uint64_t _last_uid = 0;
+                MapObjectInstance* instance = &map_object_instances.emplace_back();
+                instance->uid = _last_uid; _last_uid++;
+                instance->base = &registered_map_objects[base];
+                instance->extra_data = instance->base->config["extra_data"];
+                instance->mesh_instance = gr3d.AddMesh(instance->base->gr3d_mesh_id);
+                instance->mesh_instance->position[0] = pos_x; instance->mesh_instance->position[1] = pos_y; instance->mesh_instance->position[2] = pos_z;
+                instance->mesh_instance->RotateXEuler(rot_x_degrees); instance->mesh_instance->RotateYEuler(rot_y_degrees); instance->mesh_instance->RotateZEuler(rot_z_degrees);
+                instance->mesh_instance->scale[0] = scale_x; instance->mesh_instance->scale[1] = scale_y; instance->mesh_instance->scale[2] = scale_z;
+                instance->mesh_instance->color_RGBA = color_shift_RGBA;
+                return instance;
+        };
+        auto RemoveMapObject = [&](uint64_t uid) {
+                for (auto it = map_object_instances.begin(); it != map_object_instances.end(); it++) {
+                        if (it->uid == uid) {
+                                it->mesh_instance->Remove();
+                                map_object_instances.erase(it); return;
+                        }
+                }
+                ERROR(std::string("Failed to find & erase MapObjectInstance with uid ") + std::to_string(uid));
+        };
 
-        // struct MapObjectInstance {  // Output: name, [pos], [rot], [scale], [color], [extra_data]
-        //         uint64_t uid;
-        //         MapObject* base;  // ^ name
-        //         GRenderer3D::MeshInstance* mesh_instance;  // ^ pos, rot, scale, color
-        //         nlohmann::json extra_data;  // ^ extra_data
-        // };
-        // std::vector<MapObjectInstance> map_object_instances;
-        // auto InstantiateMapObject = [&](
-        //         std::string base,
-        //         float pos_x = 0.0f, float pos_y = 0.0f, float pos_z = 0.0f,
-        //         float rot_x_degrees = 0.0f, float rot_y_degrees = 0.0f, float rot_z_degrees = 0.0f,
-        //         float scale_x = 1.0f, float scale_y = 1.0f, float scale_z = 1.0f,
-        //         uint32_t color_shift_RGBA = 0xFFFFFFFF
-        // ) -> MapObjectInstance* { if (!registered_map_objects.contains(base)) ERROR(base + " not found in registered map objects");
-        //         static uint64_t _last_uid = 0;
-        //         MapObjectInstance* instance = &map_object_instances.emplace_back();
-        //         instance->uid = _last_uid; _last_uid++;
-        //         instance->base = &registered_map_objects[base];
-        //         instance->extra_data = instance->base->config["extra_data"];
-        //         instance->mesh_instance = gr3d.AddMesh(instance->base->gr3d_mesh_id);
-        //         return instance;
-        // };
-        // auto RemoveMapObject = [&](uint64_t uid) {
-        //         for (auto it = map_object_instances.begin(); it != map_object_instances.end(); it++) {
-        //                 if (it->uid == uid) {
-        //                         it->mesh_instance->Remove();
-        //                         map_object_instances.erase(it); return;
-        //                 }
-        //         }
-        //         ERROR(std::string("Failed to find & erase MapObjectInstance with uid ") + std::to_string(uid));
-        // };
+        // TEMP; TEST:
+        InstantiateMapObject("Cube");
+        InstantiateMapObject("Cube", 7, 2, 7, 0, 6, 7, 10, 100, 1000, 0xDEADBEEF);
+        for (const MapObjectInstance& map_object_instance : map_object_instances) {
+                std::cout << "uid: " << map_object_instance.uid << std::endl;
+                std::cout << "name: " << map_object_instance.base->config["name"] << std::endl;
+                std::cout << "pos: " << map_object_instance.mesh_instance->position[0] << " " << map_object_instance.mesh_instance->position[1] << " " << map_object_instance.mesh_instance->position[2] << std::endl;
+                std::cout << "quat rot: " << map_object_instance.mesh_instance->rotation[0] << " " << map_object_instance.mesh_instance->rotation[1] << " " << map_object_instance.mesh_instance->rotation[2] << " " << map_object_instance.mesh_instance->rotation[3] << std::endl;
+                std::cout << std::setw(4) << map_object_instance.extra_data << std::endl;
+        }
 
         // TODO: if (argc > 1): try to load map argv[1]
 return 0; } catch (const std::exception& e) { std::cout << e.what() << std::endl; return 1; } }
