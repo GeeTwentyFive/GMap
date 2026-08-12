@@ -146,37 +146,35 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
         while (gw.Update(true, 0.1, true)) {
                 double delta_time = gfp.Wait();
 
-                glViewport(0, 0, gw.window_width, gw.window_height);  // (leaving this inside of the mainloop in case I want to support windowed operation in the future)
-                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-                if (
-                        // TODO: Check if Dear ImGui *doesn't* want input
-                        gw.mouse_button_states[GWindower::MOUSEBUTTON_RIGHT]
-                ) { gw.locked_mouse = true;
-                        static int camera_move_speed = STARTING_CAMERA_MOVE_SPEED;
-                        if (gw.mouse_scroll_delta > 0.5 || gw.key_states[GWindower::KEY_UP]) camera_move_speed *= 2;
-                        if (gw.mouse_scroll_delta < -0.5 || gw.key_states[GWindower::KEY_DOWN]) camera_move_speed /= 2;
-                        if (camera_move_speed < 1) camera_move_speed = 1;
-
-                        gr3d.camera_yaw += gw.mouse_x * CAMERA_SENSITIVITY;
-                        gr3d.camera_pitch += gw.mouse_y * CAMERA_SENSITIVITY;
-                        gr3d.camera_pos[1] += (-gw.key_states[GWindower::KEY_LEFT_CONTROL] + gw.key_states[GWindower::KEY_SPACE]) * camera_move_speed * delta_time;
-                        float2 move_dir = float2{
-                                (float)(-gw.key_states[GWindower::KEY_A] + gw.key_states[GWindower::KEY_D]),
-                                (float)(-gw.key_states[GWindower::KEY_W] + gw.key_states[GWindower::KEY_S])
-                        };
-                        if (linalg::length2(move_dir) != 0) move_dir = linalg::normalize(move_dir);
-                        move_dir = linalg::rot((float)(gr3d.camera_yaw*(2*M_PI/65536)), move_dir);
-                        gr3d.camera_pos[0] += -move_dir.x * camera_move_speed * delta_time;
-                        gr3d.camera_pos[2] += -move_dir.y * camera_move_speed * delta_time;
-                }
-                else { gw.locked_mouse = false;
-                        // TODO: GUI
-                }
-
                 // TEMP; TEST:
                 if(gw.key_states[GWindower::KEY_ESCAPE]) break;
 
+                glViewport(0, 0, gw.window_width, gw.window_height);  // (leaving this inside of the mainloop in case I want to support windowed operation in the future)
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+                // TODO: if (ImGui::GetIO().WantCaptureMouse): memset() clear GWindower's `mouse_button_states` & set `mouse_scroll_delta` to 0
+                // TODO: if (ImGui::GetIO().WantCaptureKeyboard): memset() clear GWindower's `key_states`
+
+                if (gw.mouse_button_states[GWindower::MOUSEBUTTON_RIGHT]) { gw.locked_mouse = true;
+                        gr3d.camera_yaw += gw.mouse_x * CAMERA_SENSITIVITY;
+                        gr3d.camera_pitch += gw.mouse_y * CAMERA_SENSITIVITY;
+                }
+                else { gw.locked_mouse = false; }
+                static int camera_move_speed = STARTING_CAMERA_MOVE_SPEED;
+                if (gw.mouse_scroll_delta > 0.5 || gw.key_states[GWindower::KEY_UP]) camera_move_speed *= 2;
+                if (gw.mouse_scroll_delta < -0.5 || gw.key_states[GWindower::KEY_DOWN]) camera_move_speed /= 2;
+                if (camera_move_speed < 1) camera_move_speed = 1;
+                gr3d.camera_pos[1] += (-gw.key_states[GWindower::KEY_LEFT_CONTROL] + gw.key_states[GWindower::KEY_SPACE]) * camera_move_speed * delta_time;
+                float2 move_dir = float2{
+                        (float)(-gw.key_states[GWindower::KEY_A] + gw.key_states[GWindower::KEY_D]),
+                        (float)(-gw.key_states[GWindower::KEY_W] + gw.key_states[GWindower::KEY_S])
+                };
+                if (linalg::length2(move_dir) != 0) move_dir = linalg::normalize(move_dir);
+                move_dir = linalg::rot((float)(gr3d.camera_yaw*(2*M_PI/65536)), move_dir);
+                gr3d.camera_pos[0] += -move_dir.x * camera_move_speed * delta_time;
+                gr3d.camera_pos[2] += -move_dir.y * camera_move_speed * delta_time;
+
                 gr3d.DrawFrame(gw.window_width, gw.window_height);
+                // TODO: ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         }
 return 0; } catch (const std::exception& e) { std::cout << e.what() << std::endl; return 1; } }
