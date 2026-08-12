@@ -13,6 +13,10 @@
 #include <GWindower.hpp>
 #include <glad/glad.h>
 #include <GRenderer3D.hpp>
+#include <GOBJ/GOBJ.hpp>
+#define STB_IMAGE_IMPLEMENTATION
+#define STBI_ONLY_PNG
+#include <stb/stb_image.h>
 
 
 #define ERROR(msg) throw std::runtime_error(std::string("[ERROR] ") + __FILE__ + "@" + std::to_string(__LINE__) + " (" + __func__ + "): " + (msg))
@@ -76,12 +80,29 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
         GRenderer3D gr3d;
 
         std::unordered_map<std::string, MapObject> registered_map_objects;
-        for (const auto& map_object : config["OBJECTS"]) {
-                MapObject registration;
-                // TODO: name (if blank, use model file basename) -> check if already registered
-                // TODO: `gr3d_mesh_id` from `model` (check if exists at path) (+ optionally .png texture, if exists)
-                JSONAddIfHasKeys(map_object, registration.config, {"extra_data", "override_translate", "override_rotate", "override_scale", "override_bounds", "override_coloring", "singleton"});
-                registered_map_objects[map_object["name"]] = registration;
+        for (const auto& map_object : config["OBJECTS"]) { if (!map_object.contains("model")) throw std::runtime_error(std::string("MapObject ") + std::string(map_object["name"]) + " is missing key " + R"("model")");
+                MapObject registration; JSONAddIfHasKeys(map_object, registration.config, {"model", "name", "extra_data", "override_translate", "override_rotate", "override_scale", "override_bounds", "override_coloring", "singleton"}); if (!map_object.contains("name") || map_object["name"] == "") { registration.config["name"] = std::filesystem::path(map_object["model"]).stem().string(); } if (registered_map_objects.contains(registration.config["name"])) throw std::runtime_error(std::string("MapObject with name ") + std::string(registration.config["name"]) + " is already registered");
+                if (!std::filesystem::is_regular_file(registration.config["model"])) throw std::runtime_error(std::string(registration.config["model"]) + " not found");
+                GOBJ mesh_data(registration.config["model"]);
+                std::string texture_path = std::filesystem::path(registration.config["model"]).replace_extension(".png");
+                if (std::filesystem::is_regular_file(texture_path)) {
+                        int texture_width, texture_height, _texture_comp;
+                        unsigned char* texture = stbi_load(texture_path.c_str(), &texture_width, &texture_height, &_texture_comp, 4);
+                        registration.gr3d_mesh_id = gr3d.CreateMesh(
+                                (GRenderer3D::Vertex*)mesh_data.vertices.data(), mesh_data.vertices.size(),
+                                (uint32_t*)mesh_data.indices.data(), mesh_data.indices.size(),
+                                (uint32_t*)texture, texture_width, texture_height
+                        );
+                        stbi_image_free(texture);
+                } else {
+                        static const uint32_t DEFAULT_TEXTURE[] = { 0xFFFFFFFF };
+                        registration.gr3d_mesh_id = gr3d.CreateMesh(
+                                (GRenderer3D::Vertex*)mesh_data.vertices.data(), mesh_data.vertices.size(),
+                                (uint32_t*)mesh_data.indices.data(), mesh_data.indices.size(),
+                                DEFAULT_TEXTURE, 1, 1
+                        );
+                }
+                registered_map_objects[registration.config["name"]] = registration;
         }
 
         // TODO: if (argc > 1): try to load map argv[1]
