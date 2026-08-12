@@ -61,7 +61,7 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
         std::string _result; _result = JSONHasKeys(config["GLOBAL_SETTINGS"], {"force_grid_snap", "grid_size", "x_max", "x_min", "y_max", "y_min", "z_max", "z_min"}); if (_result != "") throw std::runtime_error(CONFIG_FILE + " is missing key " + _result + " in GLOBAL_SETTINGS");
         if (config["OBJECTS"].size() == 0) throw std::runtime_error(CONFIG_FILE + " has no MapObjects in OBJECTS array");
 
-        GWindower gw{0, 0, 4, 6}; if (!gladLoadGL()) ERROR("Failed to load OpenGL");
+        GWindower gw{0, 0, 4, 6}; gw.locked_mouse = false; if (!gladLoadGL()) ERROR("Failed to load OpenGL functions");
         GRenderer3D gr3d;
 
         struct MapObject {
@@ -110,7 +110,7 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
         auto InstantiateMapObject = [&](
                 std::string base,
                 float pos_x = 0.0f, float pos_y = 0.0f, float pos_z = 0.0f,
-                float quat_x = 0.0f, float quat_y = 0.0f, float quat_z = 0.0f, float quat_w = 0.0f,
+                float quat_x = 0.0f, float quat_y = 0.0f, float quat_z = 0.0f, float quat_w = 1.0f,
                 float scale_x = 1.0f, float scale_y = 1.0f, float scale_z = 1.0f,
                 uint32_t color_shift_RGBA = 0xFFFFFFFF
         ) -> MapObjectInstance* { if (!registered_map_objects.contains(base)) ERROR(base + " not found in registered map objects");
@@ -138,6 +138,9 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
 
         // TODO: if (argc > 1): try to load map argv[1]
 
+        // TEMP; TEST:
+        InstantiateMapObject("Cube");
+
         glClearColor(0.0, 0.0, 0.0, 1.0);
         GFramePacer gfp; gfp.target_frametime_ms = 1.0;  // (frame limiting itself not needed because using v-sync (and wait-until-input), using lib for other frame-pacing-related benefits)
         while (gw.Update(true, 0.1, true)) {
@@ -146,22 +149,30 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                 glViewport(0, 0, gw.window_width, gw.window_height);  // (leaving this inside of the mainloop in case I want to support windowed operation in the future)
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-                static int camera_move_speed = STARTING_CAMERA_MOVE_SPEED;
-                if (gw.mouse_scroll_delta > 0.5 || gw.key_states[GWindower::KEY_UP]) camera_move_speed *= 2;
-                if (gw.mouse_scroll_delta < -0.5 || gw.key_states[GWindower::KEY_DOWN]) camera_move_speed /= 2;
-                if (camera_move_speed < 1) camera_move_speed = 1;
+                if (
+                        // TODO: Check if Dear ImGui *doesn't* want input
+                        gw.mouse_button_states[GWindower::MOUSEBUTTON_RIGHT]
+                ) { gw.locked_mouse = true;
+                        static int camera_move_speed = STARTING_CAMERA_MOVE_SPEED;
+                        if (gw.mouse_scroll_delta > 0.5 || gw.key_states[GWindower::KEY_UP]) camera_move_speed *= 2;
+                        if (gw.mouse_scroll_delta < -0.5 || gw.key_states[GWindower::KEY_DOWN]) camera_move_speed /= 2;
+                        if (camera_move_speed < 1) camera_move_speed = 1;
 
-                gr3d.camera_yaw += gw.mouse_x * CAMERA_SENSITIVITY;
-                gr3d.camera_pitch += gw.mouse_y * CAMERA_SENSITIVITY;
-                gr3d.camera_pos[1] += (-gw.key_states[GWindower::KEY_LEFT_CONTROL] + gw.key_states[GWindower::KEY_SPACE]) * camera_move_speed * delta_time;
-                float2 move_dir = float2{
-                        (float)(-gw.key_states[GWindower::KEY_A] + gw.key_states[GWindower::KEY_D]),
-                        (float)(-gw.key_states[GWindower::KEY_W] + gw.key_states[GWindower::KEY_S])
-                };
-                if (linalg::length2(move_dir) != 0) move_dir = linalg::normalize(move_dir);
-                move_dir = linalg::rot((float)(gr3d.camera_yaw*(2*M_PI/65536)), move_dir);
-                gr3d.camera_pos[0] += -move_dir.x * camera_move_speed * delta_time;
-                gr3d.camera_pos[2] += -move_dir.y * camera_move_speed * delta_time;
+                        gr3d.camera_yaw += gw.mouse_x * CAMERA_SENSITIVITY;
+                        gr3d.camera_pitch += gw.mouse_y * CAMERA_SENSITIVITY;
+                        gr3d.camera_pos[1] += (-gw.key_states[GWindower::KEY_LEFT_CONTROL] + gw.key_states[GWindower::KEY_SPACE]) * camera_move_speed * delta_time;
+                        float2 move_dir = float2{
+                                (float)(-gw.key_states[GWindower::KEY_A] + gw.key_states[GWindower::KEY_D]),
+                                (float)(-gw.key_states[GWindower::KEY_W] + gw.key_states[GWindower::KEY_S])
+                        };
+                        if (linalg::length2(move_dir) != 0) move_dir = linalg::normalize(move_dir);
+                        move_dir = linalg::rot((float)(gr3d.camera_yaw*(2*M_PI/65536)), move_dir);
+                        gr3d.camera_pos[0] += -move_dir.x * camera_move_speed * delta_time;
+                        gr3d.camera_pos[2] += -move_dir.y * camera_move_speed * delta_time;
+                }
+                else { gw.locked_mouse = false;
+                        // TODO: GUI
+                }
 
                 // TEMP; TEST:
                 if(gw.key_states[GWindower::KEY_ESCAPE]) break;
