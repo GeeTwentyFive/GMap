@@ -8,6 +8,10 @@
 #include <vector>
 #include <stdint.h>
 #include <unordered_map>
+#include <math.h>
+#ifndef M_PI  // (Windows fix)
+#define M_PI 3.14159265358979323846
+#endif
 
 #include <nlohmann/json.hpp>
 #include <GWindower.hpp>
@@ -17,10 +21,16 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_PNG
 #include <stb/stb_image.h>
+#include <GFramePacer/GFramePacer.hpp>
+#include <linalg/linalg.h>
+using namespace linalg::aliases;
 
 
 #define ERROR(msg) throw std::runtime_error(std::string("[ERROR] ") + __FILE__ + "@" + std::to_string(__LINE__) + " (" + __func__ + "): " + (msg))
 
+
+const int CAMERA_SENSITIVITY = 16;
+const int STARTING_CAMERA_MOVE_SPEED = 8;
 
 const std::string CONFIG_FILE = "GMap.json";
 
@@ -126,16 +136,39 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                 ERROR(std::string("Failed to find & erase MapObjectInstance with uid ") + std::to_string(uid));
         };
 
+        // TODO: if (argc > 1): try to load map argv[1]
+
         // TEMP; TEST:
         InstantiateMapObject("Cube");
-        InstantiateMapObject("Cube", 7, 2, 7, 0, 6, 7, 10, 100, 1000, 0xDEADBEEF);
-        for (const MapObjectInstance& map_object_instance : map_object_instances) {
-                std::cout << "uid: " << map_object_instance.uid << std::endl;
-                std::cout << "name: " << map_object_instance.base->config["name"] << std::endl;
-                std::cout << "pos: " << map_object_instance.mesh_instance->position[0] << " " << map_object_instance.mesh_instance->position[1] << " " << map_object_instance.mesh_instance->position[2] << std::endl;
-                std::cout << "quat rot: " << map_object_instance.mesh_instance->rotation[0] << " " << map_object_instance.mesh_instance->rotation[1] << " " << map_object_instance.mesh_instance->rotation[2] << " " << map_object_instance.mesh_instance->rotation[3] << std::endl;
-                std::cout << std::setw(4) << map_object_instance.extra_data << std::endl;
-        }
 
-        // TODO: if (argc > 1): try to load map argv[1]
+        glClearColor(0.0, 0.0, 0.0, 1.0);
+        GFramePacer gfp; gfp.target_frametime_ms = 1.0;  // (frame limiting itself not needed because using v-sync (and wait-until-input), using lib for other frame-pacing-related benefits)
+        while (gw.Update(true, 0.1, true)) {
+                double delta_time = gfp.Wait();
+
+                glViewport(0, 0, gw.window_width, gw.window_height);  // (leaving this inside of the mainloop in case I want to support windowed operation in the future)
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+                static int camera_move_speed = STARTING_CAMERA_MOVE_SPEED;
+                if (gw.mouse_scroll_delta > 0.5 || gw.key_states[GWindower::KEY_UP]) camera_move_speed *= 2;
+                if (gw.mouse_scroll_delta < -0.5 || gw.key_states[GWindower::KEY_DOWN]) camera_move_speed /= 2;
+                if (camera_move_speed < 1) camera_move_speed = 1;
+
+                gr3d.camera_yaw += gw.mouse_x * CAMERA_SENSITIVITY;
+                gr3d.camera_pitch += gw.mouse_y * CAMERA_SENSITIVITY;
+                gr3d.camera_pos[1] += (-gw.key_states[GWindower::KEY_LEFT_CONTROL] + gw.key_states[GWindower::KEY_SPACE]) * camera_move_speed * delta_time;
+                float2 move_dir = float2{
+                        (float)(-gw.key_states[GWindower::KEY_A] + gw.key_states[GWindower::KEY_D]),
+                        (float)(-gw.key_states[GWindower::KEY_W] + gw.key_states[GWindower::KEY_S])
+                };
+                if (linalg::length2(move_dir) != 0) move_dir = linalg::normalize(move_dir);
+                move_dir = linalg::rot((float)(gr3d.camera_yaw*(2*M_PI/65536)), move_dir);
+                gr3d.camera_pos[0] += -move_dir.x * camera_move_speed * delta_time;
+                gr3d.camera_pos[2] += -move_dir.y * camera_move_speed * delta_time;
+
+                // TEMP; TEST:
+                if(gw.key_states[GWindower::KEY_ESCAPE]) break;
+
+                gr3d.DrawFrame(gw.window_width, gw.window_height);
+        }
 return 0; } catch (const std::exception& e) { std::cout << e.what() << std::endl; return 1; } }

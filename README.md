@@ -6,7 +6,6 @@ Intended to be used either directly for new games by reading from output JSON, o
 TODO
 
 
-
 # MapObject registration
 
 ```json
