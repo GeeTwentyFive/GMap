@@ -26,12 +26,8 @@ const std::string CONFIG_FILE = "GMap.json";
 
 const nlohmann::json DEFAULT_CONFIG = nlohmann::json::parse(R"({
         "GLOBAL_SETTINGS": {
-                "disable_bounds": true,
-                "disable_coloring": true,
-                "disable_rotate": false,
-                "disable_scale": false,
-                "disable_translate": false,
                 "force_grid_snap": false,
+                "grid_size": 1.0,
                 "x_max": 340282346638528859811704183484516925440.0,
                 "x_min": -340282346638528859811704183484516925440.0,
                 "y_max": 340282346638528859811704183484516925440.0,
@@ -52,7 +48,7 @@ std::string JSONHasKeys(const nlohmann::json &json, const std::vector<std::strin
 
 int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(CONFIG_FILE)) { std::ofstream(CONFIG_FILE) << std::setw(4) << DEFAULT_CONFIG << std::endl; throw std::runtime_error(CONFIG_FILE + " not found; new one has been created with global defaults. Populate its OBJECTS array with MapObjects"); }
         nlohmann::json config; std::ifstream(CONFIG_FILE) >> config; if (!config.contains("GLOBAL_SETTINGS")) throw std::runtime_error(CONFIG_FILE + " is missing key GLOBAL_SETTINGS"); if (!config.contains("OBJECTS")) throw std::runtime_error(CONFIG_FILE + " is missing key OBJECTS");
-        std::string _result; _result = JSONHasKeys(config["GLOBAL_SETTINGS"], {"disable_bounds", "disable_coloring", "disable_rotate", "disable_scale", "disable_translate", "force_grid_snap", "x_max", "x_min", "y_max", "y_min", "z_max", "z_min"}); if (_result != "") throw std::runtime_error(CONFIG_FILE + " is missing key " + _result + " in GLOBAL_SETTINGS");
+        std::string _result; _result = JSONHasKeys(config["GLOBAL_SETTINGS"], {"force_grid_snap", "grid_size", "x_max", "x_min", "y_max", "y_min", "z_max", "z_min"}); if (_result != "") throw std::runtime_error(CONFIG_FILE + " is missing key " + _result + " in GLOBAL_SETTINGS");
         if (config["OBJECTS"].size() == 0) throw std::runtime_error(CONFIG_FILE + " has no MapObjects in OBJECTS array");
 
         GWindower gw{0, 0, 4, 6}; if (!gladLoadGL()) ERROR("Failed to load OpenGL");
@@ -62,19 +58,15 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                 nlohmann::json config = nlohmann::json::parse(R"({
                         "model": "",
                         "name": "",
-                        "extra_data": [],
-                        "override_translate": false,
-                        "override_rotate": false,
-                        "override_scale": false,
-                        "override_bounds": false,
-                        "override_coloring": false,
+                        "data": [],
+                        "extra_data": {},
                         "singleton": false
                 })");
                 uint64_t gr3d_mesh_id;
         };
         std::unordered_map<std::string, MapObject> registered_map_objects;
         for (const auto& map_object : config["OBJECTS"]) { if (!map_object.contains("model")) throw std::runtime_error(std::string("MapObject ") + std::string(map_object["name"]) + " is missing key " + R"("model")");
-                MapObject registration; JSONAddIfHasKeys(map_object, registration.config, {"model", "name", "extra_data", "override_translate", "override_rotate", "override_scale", "override_bounds", "override_coloring", "singleton"}); if (!map_object.contains("name") || map_object["name"] == "") { registration.config["name"] = std::filesystem::path(map_object["model"]).stem().string(); } if (registered_map_objects.contains(registration.config["name"])) throw std::runtime_error(std::string("MapObject with name ") + std::string(registration.config["name"]) + " is already registered");
+                MapObject registration; JSONAddIfHasKeys(map_object, registration.config, {"model", "name", "data", "extra_data", "singleton"}); if (!map_object.contains("name") || map_object["name"] == "") { registration.config["name"] = std::filesystem::path(map_object["model"]).stem().string(); } if (registered_map_objects.contains(registration.config["name"])) throw std::runtime_error(std::string("MapObject with name ") + std::string(registration.config["name"]) + " is already registered");
                 if (!std::filesystem::is_regular_file(registration.config["model"])) throw std::runtime_error(std::string(registration.config["model"]) + " not found");
                 GOBJ mesh_data(registration.config["model"]);
                 std::string texture_path = std::filesystem::path(registration.config["model"]).replace_extension(".png");
