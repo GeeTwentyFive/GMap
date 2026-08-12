@@ -173,6 +173,7 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                 move_dir = linalg::rot((float)(gr3d.camera_yaw*(2*M_PI/65536)), move_dir);
                 gr3d.camera_pos[0] += -move_dir.x * camera_move_speed * delta_time;
                 gr3d.camera_pos[2] += -move_dir.y * camera_move_speed * delta_time;
+                if (gw.key_states[GWindower::KEY_ZERO]) { gr3d.camera_pos[0] = 0; gr3d.camera_pos[1] = 0; gr3d.camera_pos[2] = 0; }
 
                 gr3d.DrawFrame(gw.window_width, gw.window_height);
                 // TODO: ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
