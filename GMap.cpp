@@ -144,9 +144,9 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
         // TEMP; TEST:
         InstantiateMapObject("Cube");
 
-        ImGui::CreateContext(); ImGui_ImplGlfw_InitForOpenGL((GLFWwindow*)(gw._glfwWindow), true); ImGui_ImplOpenGL3_Init("#version 460 core"); ImGui::GetIO().ConfigFlags |= (ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_NoMouseCursorChange);
-        ImGui::GetIO().IniFilename = NULL; // TODO: imgui.ini in app(argv[0] end)-named dir in OS temp. dir
-        // ^ OR: DockBuilder API
+        ImGui::CreateContext(); ImGui_ImplGlfw_InitForOpenGL((GLFWwindow*)(gw._glfwWindow), true); ImGui_ImplOpenGL3_Init("#version 460 core"); ImGui::GetIO().ConfigFlags |= (ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_NoMouseCursorChange); ImGui::GetIO().IniFilename = NULL;
+        static const std::string IMGUI_CACHE_PATH = (std::filesystem::temp_directory_path() / std::filesystem::path(argv[0]).stem()).string()+"_imgui.ini";
+        if (std::filesystem::is_regular_file(IMGUI_CACHE_PATH)) ImGui::LoadIniSettingsFromDisk(IMGUI_CACHE_PATH.c_str());
 
         glClearColor(0.0, 0.0, 0.0, 1.0);
         GFramePacer gfp; gfp.target_frametime_ms = 1.0;  // (frame limiting itself not needed because using v-sync (and wait-until-input), using lib for other frame-pacing-related benefits)
@@ -201,5 +201,6 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                         break;
                 }
         }
+        ImGui::SaveIniSettingsToDisk(IMGUI_CACHE_PATH.c_str());
         ImGui_ImplOpenGL3_Shutdown(); ImGui_ImplGlfw_Shutdown(); ImGui::DestroyContext();
 return 0; } catch (const std::exception& e) { std::cout << e.what() << std::endl; return 1; } }
