@@ -139,10 +139,52 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                 ERROR(std::string("Failed to find & erase MapObjectInstance with uid ") + std::to_string(uid));
         };
 
-        // TODO: if (argc > 1): try to load map argv[1]
+        if (argc > 1) { if (!std::filesystem::is_regular_file(argv[1])) throw std::runtime_error(std::string(argv[1]) + " not found or not regular file");
+                nlohmann::json input = nlohmann::json::parse(std::ifstream(argv[1])); if (!input.is_array()) throw std::runtime_error(std::string(argv[1]) + " root is not an array");
+                for (const nlohmann::json& map_object_instance_json : input) { if (!map_object_instance_json.is_object()) throw std::runtime_error(std::string(argv[1]) + " contains non-object type");
+                        if (!map_object_instance_json.contains("name")) throw std::runtime_error(std::string("Object in ") + argv[1] + " is missing key 'name'");
+                        if (!registered_map_objects.contains(map_object_instance_json["name"])) throw std::runtime_error(std::string("Registered MapObject not found for object with name ") + std::string(map_object_instance_json["name"]) + " in " + argv[1]);
 
-        // TEMP; TEST:
-        InstantiateMapObject("Cube");
+                        float pos_x = 0; float pos_y = 0; float pos_z = 0;
+                        if (std::find(registered_map_objects[map_object_instance_json["name"]].config["data"].begin(), registered_map_objects[map_object_instance_json["name"]].config["data"].end(),
+                                "position") != registered_map_objects[map_object_instance_json["name"]].config["data"].end()
+                        ) {
+                                pos_x = map_object_instance_json["pos_x"];
+                                pos_y = map_object_instance_json["pos_y"];
+                                pos_z = map_object_instance_json["pos_z"];
+                        }
+                        float rot_x = 0; float rot_y = 0; float rot_z = 0; float rot_w = 1;
+                        if (std::find(registered_map_objects[map_object_instance_json["name"]].config["data"].begin(), registered_map_objects[map_object_instance_json["name"]].config["data"].end(),
+                                "rotation") != registered_map_objects[map_object_instance_json["name"]].config["data"].end()
+                        ) {
+                                rot_x = map_object_instance_json["rot_x"];
+                                rot_y = map_object_instance_json["rot_y"];
+                                rot_z = map_object_instance_json["rot_z"];
+                                rot_w = map_object_instance_json["rot_w"];
+                        }
+                        float scale_x = 1.0; float scale_y = 1.0; float scale_z = 1.0;
+                        if (std::find(registered_map_objects[map_object_instance_json["name"]].config["data"].begin(), registered_map_objects[map_object_instance_json["name"]].config["data"].end(),
+                                "scale") != registered_map_objects[map_object_instance_json["name"]].config["data"].end()
+                        ) {
+                                scale_x = map_object_instance_json["scale_x"];
+                                scale_y = map_object_instance_json["scale_y"];
+                                scale_z = map_object_instance_json["scale_z"];
+                        }
+                        uint32_t color = 0xFFFFFFFF;
+                        if (std::find(registered_map_objects[map_object_instance_json["name"]].config["data"].begin(), registered_map_objects[map_object_instance_json["name"]].config["data"].end(),
+                                "color") != registered_map_objects[map_object_instance_json["name"]].config["data"].end()
+                        ) { color = map_object_instance_json["color"]; }
+
+                        MapObjectInstance* map_object_instance = InstantiateMapObject(
+                                map_object_instance_json["name"],
+                                pos_x, pos_y, pos_z,
+                                rot_x, rot_y, rot_z, rot_w,
+                                scale_x, scale_y, scale_z,
+                                color
+                        );
+                        if (registered_map_objects[map_object_instance_json["name"]].config["extra_data"].size() > 0) map_object_instance->extra_data = map_object_instance_json["extra_data"];
+                }
+        }
 
         ImGui::CreateContext(); ImGui_ImplGlfw_InitForOpenGL((GLFWwindow*)(gw._glfwWindow), true); ImGui_ImplOpenGL3_Init("#version 460 core"); ImGui::GetIO().ConfigFlags |= (ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_NoMouseCursorChange); ImGui::GetIO().IniFilename = NULL;
         static const std::string IMGUI_CACHE_PATH = (std::filesystem::temp_directory_path() / std::filesystem::path(argv[0]).stem()).string()+"_imgui.ini";
