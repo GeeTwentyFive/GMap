@@ -196,8 +196,39 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
 
 
                 if(gw.key_states[GWindower::KEY_ESCAPE]) {
-                        // TODO: Serialize MapObjectInstances to JSON -> print to stdout
-
+                        nlohmann::json output = nlohmann::json::array();
+                        for (const MapObjectInstance& map_object_instance : map_object_instances) {
+                                nlohmann::json map_object_instance_json = nlohmann::json::object();
+                                map_object_instance_json["name"] = map_object_instance.base->config["name"];
+                                if (std::find(map_object_instance.base->config["data"].begin(), map_object_instance.base->config["data"].end(),
+                                        "position") != map_object_instance.base->config["data"].end()
+                                ) {
+                                        map_object_instance_json["pos_x"] = map_object_instance.mesh_instance->position[0];
+                                        map_object_instance_json["pos_y"] = map_object_instance.mesh_instance->position[1];
+                                        map_object_instance_json["pos_z"] = map_object_instance.mesh_instance->position[2];
+                                }
+                                if (std::find(map_object_instance.base->config["data"].begin(), map_object_instance.base->config["data"].end(),
+                                        "rotation") != map_object_instance.base->config["data"].end()
+                                ) {
+                                        map_object_instance_json["rot_x"] = map_object_instance.mesh_instance->rotation[0];
+                                        map_object_instance_json["rot_y"] = map_object_instance.mesh_instance->rotation[1];
+                                        map_object_instance_json["rot_z"] = map_object_instance.mesh_instance->rotation[2];
+                                        map_object_instance_json["rot_w"] = map_object_instance.mesh_instance->rotation[3];
+                                }
+                                if (std::find(map_object_instance.base->config["data"].begin(), map_object_instance.base->config["data"].end(),
+                                        "scale") != map_object_instance.base->config["data"].end()
+                                ) {
+                                        map_object_instance_json["scale_x"] = map_object_instance.mesh_instance->scale[0];
+                                        map_object_instance_json["scale_y"] = map_object_instance.mesh_instance->scale[1];
+                                        map_object_instance_json["scale_z"] = map_object_instance.mesh_instance->scale[2];
+                                }
+                                if (std::find(map_object_instance.base->config["data"].begin(), map_object_instance.base->config["data"].end(),
+                                        "color") != map_object_instance.base->config["data"].end()
+                                ) { map_object_instance_json["color"] = map_object_instance.mesh_instance->color_RGBA; }
+                                if (map_object_instance.extra_data.size() > 0) { map_object_instance_json["extra_data"] = map_object_instance.extra_data; }
+                                output.push_back(map_object_instance_json);
+                        }
+                        std::cout << std::setw(4) << output << std::endl;
                         break;
                 }
         }
