@@ -277,7 +277,7 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                                                         ImGui::InputText(label.c_str(), &_val); val = _val;
                                                 } break;
                                                 // TODO: array & object
-                                                // ^ for array: make into function
+                                                // ^ for array: make into (STATIC LAMBDA -> INSTA CALL) function
                                                 // ^ for objects:
                                                 // ImGui::BeginChild("TEST_EXTRA_DATA", {}, (ImGuiChildFlags_Borders | ImGuiChildFlags_AutoResizeY)); {
                                                 //         ImGui::Text("TEST_TEXT");
