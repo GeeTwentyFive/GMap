@@ -209,9 +209,6 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                 glViewport(0, 0, gw.window_width, gw.window_height);  // (leaving this inside of the mainloop in case I want to support windowed operation in the future)
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-                // TODO: if (ImGui::GetIO().WantCaptureMouse): memset() clear GWindower's `mouse_button_states` & set `mouse_scroll_delta` to 0
-                // TODO: if (ImGui::GetIO().WantCaptureKeyboard): memset() clear GWindower's `key_states`
-
                 if (gw.mouse_button_states[GWindower::MOUSEBUTTON_RIGHT]) { gw.locked_mouse = true;
                         gr3d.camera_yaw += gw.mouse_x * CAMERA_SENSITIVITY;
                         gr3d.camera_pitch += gw.mouse_y * CAMERA_SENSITIVITY;
@@ -230,22 +227,19 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                         gr3d.camera_pos[2] += -move_dir.y * camera_move_speed * delta_time;
                         if (gw.key_states[GWindower::KEY_ZERO]) { gr3d.camera_pos[0] = 0; gr3d.camera_pos[1] = 0; gr3d.camera_pos[2] = 0; }
                 }
-                else { gw.locked_mouse = false;
-                        ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame(); ImGui::NewFrame(); ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
+                else { gw.locked_mouse = false; }
 
+                ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame(); ImGui::NewFrame(); ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode); {
                         // TEMP; TEST:
                         ImGui::Begin("INSPECTOR", NULL, ImGuiWindowFlags_AlwaysAutoResize); {
                                 ImGui::Text("TEST");
                         } ImGui::End();
 
                         // TODO
-
-                        ImGui::Render();
-                }
+                } ImGui::Render();
 
                 gr3d.DrawFrame(gw.window_width, gw.window_height);
-                if (!gw.mouse_button_states[GWindower::MOUSEBUTTON_RIGHT]) ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
+                ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
                 glClear(GL_DEPTH_BUFFER_BIT);
                 crosshair_sprite->size[0] = gw.window_height/180.0; crosshair_sprite->size[1] = gw.window_height/180.0;
                 crosshair_sprite->position[0] = (gw.window_width/2.0 - crosshair_sprite->size[0]/2.0); crosshair_sprite->position[1] = (gw.window_height/2.0 - crosshair_sprite->size[1]/2.0);
