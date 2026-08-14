@@ -33,6 +33,7 @@ add_library(dear_imgui
         "libs/imgui/imgui_demo.cpp"
         "libs/imgui/backends/imgui_impl_glfw.cpp"
         "libs/imgui/backends/imgui_impl_opengl3.cpp"
+        "libs/imgui/misc/cpp/imgui_stdlib.cpp"
 )
 target_include_directories(dear_imgui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/libs/imgui")
 target_compile_definitions(dear_imgui PRIVATE "IMGUI_IMPL_GLFW_DISABLE_X11")

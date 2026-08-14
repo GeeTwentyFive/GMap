@@ -27,6 +27,7 @@ using namespace linalg::aliases;
 #include <imgui/imgui.h>
 #include <imgui/backends/imgui_impl_glfw.h>
 #include <imgui/backends/imgui_impl_opengl3.h>
+#include <imgui/misc/cpp/imgui_stdlib.h>
 #include <GRenderer2D.hpp>
 
 
@@ -73,14 +74,13 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                         "model": "",
                         "name": "",
                         "data": [],
-                        "extra_data": {},
-                        "singleton": false
+                        "extra_data": {}
                 })");
                 uint64_t gr3d_mesh_id;
         };
         std::unordered_map<std::string, MapObject> registered_map_objects;
         for (const auto& map_object : config["OBJECTS"]) { if (!map_object.contains("model")) throw std::runtime_error(std::string("MapObject ") + std::string(map_object["name"]) + " is missing key " + R"("model")");
-                MapObject registration; JSONAddIfHasKeys(map_object, registration.config, {"model", "name", "data", "extra_data", "singleton"}); if (!map_object.contains("name") || map_object["name"] == "") { registration.config["name"] = std::filesystem::path(map_object["model"]).stem().string(); } if (registered_map_objects.contains(registration.config["name"])) throw std::runtime_error(std::string("MapObject with name ") + std::string(registration.config["name"]) + " is already registered");
+                MapObject registration; JSONAddIfHasKeys(map_object, registration.config, {"model", "name", "data", "extra_data"}); if (!map_object.contains("name") || map_object["name"] == "") { registration.config["name"] = std::filesystem::path(map_object["model"]).stem().string(); } if (registered_map_objects.contains(registration.config["name"])) throw std::runtime_error(std::string("MapObject with name ") + std::string(registration.config["name"]) + " is already registered");
                 if (!std::filesystem::is_regular_file(registration.config["model"])) throw std::runtime_error(std::string(registration.config["model"]) + " not found");
                 GOBJ mesh_data(registration.config["model"]);
                 std::string texture_path = std::filesystem::path(registration.config["model"]).replace_extension(".png");
@@ -129,15 +129,6 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                 instance->mesh_instance->scale[0] = scale_x; instance->mesh_instance->scale[1] = scale_y; instance->mesh_instance->scale[2] = scale_z;
                 instance->mesh_instance->color_RGBA = color_shift_RGBA;
                 return instance;
-        };
-        auto RemoveMapObject = [&](uint64_t uid) {
-                for (auto it = map_object_instances.begin(); it != map_object_instances.end(); it++) {
-                        if (it->uid == uid) {
-                                it->mesh_instance->Remove();
-                                map_object_instances.erase(it); return;
-                        }
-                }
-                ERROR(std::string("Failed to find & erase MapObjectInstance with uid ") + std::to_string(uid));
         };
 
         if (argc > 1) { if (!std::filesystem::is_regular_file(argv[1])) throw std::runtime_error(std::string(argv[1]) + " not found or not regular file");
@@ -201,6 +192,11 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
         };
         GRenderer2D::SpriteInstance* crosshair_sprite = gr2d.AddSprite(gr2d.CreateSprite(CROSSHAIR_TEXTURE, 5, 5)); crosshair_sprite->z_depth = -0.99f;
 
+        MapObjectInstance* selected_map_object = nullptr;
+
+        // TEMP; TEST:
+        selected_map_object = &map_object_instances[0];
+
         glClearColor(0.0, 0.0, 0.0, 1.0);
         GFramePacer gfp; gfp.target_frametime_ms = 1.0;  // (frame limiting itself not needed because using v-sync (and wait-until-input), using lib for other frame-pacing-related benefits)
         while (gw.Update(true, 0.1, true)) {
@@ -230,13 +226,88 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                 else { gw.locked_mouse = false; }
 
                 ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame(); ImGui::NewFrame(); ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode); {
-                        // TEMP; TEST:
-                        ImGui::Begin("INSPECTOR", NULL, ImGuiWindowFlags_AlwaysAutoResize); {
-                                ImGui::Text("TEST");
+                        ImGui::Begin("ADD", NULL, ImGuiWindowFlags_AlwaysAutoResize); {
+                                for (const auto& [map_object, _] : registered_map_objects) {
+                                        if (ImGui::Button(map_object.c_str())) { selected_map_object = InstantiateMapObject(map_object, gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]); }
+                                }
                         } ImGui::End();
 
-                        // TODO
+                        if (selected_map_object != nullptr) {
+                                ImGui::Begin("INSPECTOR", NULL, ImGuiWindowFlags_AlwaysAutoResize); {
+                                        if (std::find(selected_map_object->base->config["data"].begin(), selected_map_object->base->config["data"].end(),
+                                                "position") != selected_map_object->base->config["data"].end()
+                                        ) ImGui::DragFloat3("POSITION", selected_map_object->mesh_instance->position);
+                                        if (std::find(selected_map_object->base->config["data"].begin(), selected_map_object->base->config["data"].end(),
+                                                "rotation") != selected_map_object->base->config["data"].end()
+                                        ) ImGui::DragFloat4("ROTATION", selected_map_object->mesh_instance->rotation);
+                                        if (std::find(selected_map_object->base->config["data"].begin(), selected_map_object->base->config["data"].end(),
+                                                "scale") != selected_map_object->base->config["data"].end()
+                                        ) ImGui::DragFloat3("SCALE", selected_map_object->mesh_instance->scale);
+                                        if (std::find(selected_map_object->base->config["data"].begin(), selected_map_object->base->config["data"].end(),
+                                                "color") != selected_map_object->base->config["data"].end()
+                                        ) {
+                                                ImVec4 color = ImGui::ColorConvertU32ToFloat4(selected_map_object->mesh_instance->color_RGBA);
+                                                float _temp;
+                                                _temp = color.x; color.x = color.w; color.w = _temp;
+                                                _temp = color.y; color.y = color.z; color.z = _temp;
+                                                ImGui::ColorPicker4("COLOR", (float*)&color);
+                                                _temp = color.x; color.x = color.w; color.w = _temp;
+                                                _temp = color.y; color.y = color.z; color.z = _temp;
+                                                selected_map_object->mesh_instance->color_RGBA = ImGui::ColorConvertFloat4ToU32(color);
+                                        }
+                                        ImGui::NewLine();
+                                        uint64_t _uid = 0;
+                                        for (auto& [label, val] : selected_map_object->extra_data.items()) { switch (val.type()) { default: continue;
+                                                case (nlohmann::json::value_t::null): {
+                                                        ImGui::TextUnformatted(label.c_str());
+                                                } break;
+                                                case (nlohmann::json::value_t::boolean): { bool _val = val;
+                                                        ImGui::Checkbox(label.c_str(), &_val); val = _val;
+                                                } break;
+                                                case (nlohmann::json::value_t::number_float): { float _val = val;
+                                                        ImGui::InputFloat(label.c_str(), &_val, 0, 0, "%f"); val = _val;
+                                                } break;
+                                                case (nlohmann::json::value_t::number_integer): { int64_t _val = val;
+                                                        ImGui::InputScalar(label.c_str(), ImGuiDataType_S64, &_val); val = _val;
+                                                } break;
+                                                case (nlohmann::json::value_t::number_unsigned): { uint64_t _val = val;
+                                                        ImGui::InputScalar(label.c_str(), ImGuiDataType_U64, &_val); val = _val;
+                                                } break;
+                                                case (nlohmann::json::value_t::string): { std::string _val = val;
+                                                        ImGui::InputText(label.c_str(), &_val); val = _val;
+                                                } break;
+                                                // TODO: array & object
+                                                // ^ for array: make into function
+                                                // ^ for objects:
+                                                // ImGui::BeginChild("TEST_EXTRA_DATA", {}, (ImGuiChildFlags_Borders | ImGuiChildFlags_AutoResizeY)); {
+                                                //         ImGui::Text("TEST_TEXT");
+                                                // } ImGui::EndChild();
+                                        }}
+                                } ImGui::End();
+                        }
                 } ImGui::Render();
+
+                if (gw.key_states[GWindower::KEY_LEFT_ALT] && gw.key_states[GWindower::KEY_D]) {
+                        MapObjectInstance* clone = InstantiateMapObject(
+                                selected_map_object->base->config["name"],
+                                selected_map_object->mesh_instance->position[0], selected_map_object->mesh_instance->position[1], selected_map_object->mesh_instance->position[2],
+                                selected_map_object->mesh_instance->rotation[0], selected_map_object->mesh_instance->rotation[1], selected_map_object->mesh_instance->rotation[2], selected_map_object->mesh_instance->rotation[3],
+                                selected_map_object->mesh_instance->scale[0], selected_map_object->mesh_instance->scale[1], selected_map_object->mesh_instance->scale[2],
+                                selected_map_object->mesh_instance->color_RGBA
+                        );
+                        clone->extra_data = selected_map_object->extra_data;
+                        selected_map_object = clone;
+                }
+
+                if (gw.key_states[GWindower::KEY_DELETE]) {
+                        for (auto it = map_object_instances.begin(); it != map_object_instances.end(); it++) {
+                                if (it->uid == selected_map_object->uid) {
+                                        it->mesh_instance->Remove();
+                                        map_object_instances.erase(it); break;
+                                }
+                        }
+                        selected_map_object = nullptr;
+                }
 
                 gr3d.DrawFrame(gw.window_width, gw.window_height);
                 ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
