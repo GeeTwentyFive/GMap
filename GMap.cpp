@@ -27,6 +27,7 @@ using namespace linalg::aliases;
 #include <imgui/imgui.h>
 #include <imgui/backends/imgui_impl_glfw.h>
 #include <imgui/backends/imgui_impl_opengl3.h>
+#include <GRenderer2D.hpp>
 
 
 #define ERROR(msg) throw std::runtime_error(std::string("[ERROR] ") + __FILE__ + "@" + std::to_string(__LINE__) + " (" + __func__ + "): " + (msg))
@@ -190,6 +191,16 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
         static const std::string IMGUI_CACHE_PATH = (std::filesystem::temp_directory_path() / std::filesystem::path(argv[0]).stem()).string()+"_imgui.ini";
         if (std::filesystem::is_regular_file(IMGUI_CACHE_PATH)) ImGui::LoadIniSettingsFromDisk(IMGUI_CACHE_PATH.c_str());
 
+        GRenderer2D gr2d;
+        static const uint32_t CROSSHAIR_TEXTURE[] = {
+                0x00000000, 0xFF000000, 0xFF000000, 0xFF000000, 0x00000000,
+                0xFF000000, 0xFF000000, 0xFFFFFFFF, 0xFF000000, 0xFF000000,
+                0xFF000000, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFF000000,
+                0xFF000000, 0xFF000000, 0xFFFFFFFF, 0xFF000000, 0xFF000000,
+                0x00000000, 0xFF000000, 0xFF000000, 0xFF000000, 0x00000000
+        };
+        GRenderer2D::SpriteInstance* crosshair_sprite = gr2d.AddSprite(gr2d.CreateSprite(CROSSHAIR_TEXTURE, 5, 5)); crosshair_sprite->z_depth = -0.99f;
+
         glClearColor(0.0, 0.0, 0.0, 1.0);
         GFramePacer gfp; gfp.target_frametime_ms = 1.0;  // (frame limiting itself not needed because using v-sync (and wait-until-input), using lib for other frame-pacing-related benefits)
         while (gw.Update(true, 0.1, true)) {
@@ -234,6 +245,11 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
 
                 gr3d.DrawFrame(gw.window_width, gw.window_height);
                 if (!gw.mouse_button_states[GWindower::MOUSEBUTTON_RIGHT]) ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+                glClear(GL_DEPTH_BUFFER_BIT);
+                crosshair_sprite->size[0] = gw.window_height/180.0; crosshair_sprite->size[1] = gw.window_height/180.0;
+                crosshair_sprite->position[0] = (gw.window_width/2.0 - crosshair_sprite->size[0]/2.0); crosshair_sprite->position[1] = (gw.window_height/2.0 - crosshair_sprite->size[1]/2.0);
+                gr2d.DrawFrame(gw.window_width, gw.window_height);
 
 
                 if(gw.key_states[GWindower::KEY_ESCAPE]) {

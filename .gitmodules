@@ -25,3 +25,6 @@
 [submodule "libs/GFramePacer"]
 	path = libs/GFramePacer
 	url = https://github.com/GeeTwentyFive/GFramePacer.git
+[submodule "libs/libGRenderer2D"]
+	path = libs/libGRenderer2D
+	url = https://github.com/GeeTwentyFive/libGRenderer2D.git
