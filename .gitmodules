@@ -10,9 +10,6 @@
 [submodule "libs/json"]
 	path = libs/json
 	url = https://github.com/nlohmann/json.git
-[submodule "libs/ImGuizmo"]
-	path = libs/ImGuizmo
-	url = https://github.com/CedricGuillemet/ImGuizmo.git
 [submodule "libs/linalg"]
 	path = libs/linalg
 	url = https://github.com/sgorsten/linalg.git

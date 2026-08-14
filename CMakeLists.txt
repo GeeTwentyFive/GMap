@@ -37,10 +37,6 @@ add_library(dear_imgui
 target_include_directories(dear_imgui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/libs/imgui")
 target_compile_definitions(dear_imgui PRIVATE "IMGUI_IMPL_GLFW_DISABLE_X11")
 
-set(IMGUIZMO_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
-add_subdirectory("libs/ImGuizmo")
-target_link_libraries(imguizmo PRIVATE dear_imgui)
-
 target_link_libraries(${PROJECT_NAME} PRIVATE
         GMAP_glad
         GWindower
@@ -48,5 +44,4 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         GRenderer2D
         nlohmann_json
         dear_imgui
-        imguizmo
 )
