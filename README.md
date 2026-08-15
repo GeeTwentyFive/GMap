@@ -16,7 +16,7 @@ TODO
                         "model": "PATH/TO/MODEL.obj",  // (texture has to be PNG with same base name)
                         "name": "",  // (default = model base name)
                         "data": [],  // one or more of: "position", "rotation", "scale", "color"
-                        "extra_data": {  // (appears in inspector) (any JSON type as value in obj)
+                        "extra_data": {  // (appears in inspector) (null, bool, number, string)
                                 "example_1": 7.27,
                                 "example_2": false
                         }

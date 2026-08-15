@@ -12,6 +12,7 @@
 #ifndef M_PI  // (Windows fix)
 #define M_PI 3.14159265358979323846
 #endif
+#include <memory>
 
 #include <nlohmann/json.hpp>
 #include <GWindower.hpp>
@@ -110,7 +111,7 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                 GRenderer3D::MeshInstance* mesh_instance;  // ^ pos, rot, scale, color
                 nlohmann::json extra_data;  // ^ extra_data
         };
-        std::vector<MapObjectInstance> map_object_instances;
+        std::vector<std::unique_ptr<MapObjectInstance>> map_object_instances;
         auto InstantiateMapObject = [&](
                 std::string base,
                 float pos_x = 0.0f, float pos_y = 0.0f, float pos_z = 0.0f,
@@ -119,7 +120,7 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                 uint32_t color_shift_RGBA = 0xFFFFFFFF
         ) -> MapObjectInstance* { if (!registered_map_objects.contains(base)) ERROR(base + " not found in registered map objects");
                 static uint64_t _last_uid = 0;
-                MapObjectInstance* instance = &map_object_instances.emplace_back();
+                MapObjectInstance* instance = map_object_instances.emplace_back(std::make_unique<MapObjectInstance>()).get();
                 instance->uid = _last_uid; _last_uid++;
                 instance->base = &registered_map_objects[base];
                 instance->extra_data = instance->base->config["extra_data"];
@@ -194,9 +195,6 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
 
         MapObjectInstance* selected_map_object = nullptr;
 
-        // TEMP; TEST:
-        selected_map_object = &map_object_instances[0];
-
         glClearColor(0.0, 0.0, 0.0, 1.0);
         GFramePacer gfp; gfp.target_frametime_ms = 1.0;  // (frame limiting itself not needed because using v-sync (and wait-until-input), using lib for other frame-pacing-related benefits)
         while (gw.Update(true, 0.1, true)) {
@@ -257,7 +255,7 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                                         }
                                         ImGui::NewLine();
                                         uint64_t _uid = 0;
-                                        for (auto& [label, val] : selected_map_object->extra_data.items()) { switch (val.type()) { default: continue;
+                                        for (auto& [label, val] : selected_map_object->extra_data.items()) { ImGui::PushID(_uid); switch (val.type()) { default: break;
                                                 case (nlohmann::json::value_t::null): {
                                                         ImGui::TextUnformatted(label.c_str());
                                                 } break;
@@ -276,18 +274,13 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                                                 case (nlohmann::json::value_t::string): { std::string _val = val;
                                                         ImGui::InputText(label.c_str(), &_val); val = _val;
                                                 } break;
-                                                // TODO: array & object
-                                                // ^ for array: make into (STATIC LAMBDA -> INSTA CALL) function
-                                                // ^ for objects:
-                                                // ImGui::BeginChild("TEST_EXTRA_DATA", {}, (ImGuiChildFlags_Borders | ImGuiChildFlags_AutoResizeY)); {
-                                                //         ImGui::Text("TEST_TEXT");
-                                                // } ImGui::EndChild();
-                                        }}
+                                        } ImGui::PopID(); _uid++; }
                                 } ImGui::End();
                         }
                 } ImGui::Render();
 
-                if (gw.key_states[GWindower::KEY_LEFT_ALT] && gw.key_states[GWindower::KEY_D]) {
+                static bool _cloned = false;
+                if (gw.key_states[GWindower::KEY_LEFT_ALT] && gw.key_states[GWindower::KEY_D] && selected_map_object != nullptr && !_cloned) { _cloned = true;
                         MapObjectInstance* clone = InstantiateMapObject(
                                 selected_map_object->base->config["name"],
                                 selected_map_object->mesh_instance->position[0], selected_map_object->mesh_instance->position[1], selected_map_object->mesh_instance->position[2],
@@ -297,12 +290,12 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                         );
                         clone->extra_data = selected_map_object->extra_data;
                         selected_map_object = clone;
-                }
+                } else if (!gw.key_states[GWindower::KEY_LEFT_ALT] && !gw.key_states[GWindower::KEY_D]) _cloned = false;
 
-                if (gw.key_states[GWindower::KEY_DELETE]) {
+                if (gw.key_states[GWindower::KEY_DELETE] && selected_map_object != nullptr) {
                         for (auto it = map_object_instances.begin(); it != map_object_instances.end(); it++) {
-                                if (it->uid == selected_map_object->uid) {
-                                        it->mesh_instance->Remove();
+                                if (it->get()->uid == selected_map_object->uid) {
+                                        it->get()->mesh_instance->Remove();
                                         map_object_instances.erase(it); break;
                                 }
                         }
@@ -319,35 +312,35 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
 
                 if(gw.key_states[GWindower::KEY_ESCAPE]) {
                         nlohmann::json output = nlohmann::json::array();
-                        for (const MapObjectInstance& map_object_instance : map_object_instances) {
+                        for (const auto& map_object_instance : map_object_instances) {
                                 nlohmann::json map_object_instance_json = nlohmann::json::object();
-                                map_object_instance_json["name"] = map_object_instance.base->config["name"];
-                                if (std::find(map_object_instance.base->config["data"].begin(), map_object_instance.base->config["data"].end(),
-                                        "position") != map_object_instance.base->config["data"].end()
+                                map_object_instance_json["name"] = map_object_instance->base->config["name"];
+                                if (std::find(map_object_instance->base->config["data"].begin(), map_object_instance->base->config["data"].end(),
+                                        "position") != map_object_instance->base->config["data"].end()
                                 ) {
-                                        map_object_instance_json["pos_x"] = map_object_instance.mesh_instance->position[0];
-                                        map_object_instance_json["pos_y"] = map_object_instance.mesh_instance->position[1];
-                                        map_object_instance_json["pos_z"] = map_object_instance.mesh_instance->position[2];
+                                        map_object_instance_json["pos_x"] = map_object_instance->mesh_instance->position[0];
+                                        map_object_instance_json["pos_y"] = map_object_instance->mesh_instance->position[1];
+                                        map_object_instance_json["pos_z"] = map_object_instance->mesh_instance->position[2];
                                 }
-                                if (std::find(map_object_instance.base->config["data"].begin(), map_object_instance.base->config["data"].end(),
-                                        "rotation") != map_object_instance.base->config["data"].end()
+                                if (std::find(map_object_instance->base->config["data"].begin(), map_object_instance->base->config["data"].end(),
+                                        "rotation") != map_object_instance->base->config["data"].end()
                                 ) {
-                                        map_object_instance_json["rot_x"] = map_object_instance.mesh_instance->rotation[0];
-                                        map_object_instance_json["rot_y"] = map_object_instance.mesh_instance->rotation[1];
-                                        map_object_instance_json["rot_z"] = map_object_instance.mesh_instance->rotation[2];
-                                        map_object_instance_json["rot_w"] = map_object_instance.mesh_instance->rotation[3];
+                                        map_object_instance_json["rot_x"] = map_object_instance->mesh_instance->rotation[0];
+                                        map_object_instance_json["rot_y"] = map_object_instance->mesh_instance->rotation[1];
+                                        map_object_instance_json["rot_z"] = map_object_instance->mesh_instance->rotation[2];
+                                        map_object_instance_json["rot_w"] = map_object_instance->mesh_instance->rotation[3];
                                 }
-                                if (std::find(map_object_instance.base->config["data"].begin(), map_object_instance.base->config["data"].end(),
-                                        "scale") != map_object_instance.base->config["data"].end()
+                                if (std::find(map_object_instance->base->config["data"].begin(), map_object_instance->base->config["data"].end(),
+                                        "scale") != map_object_instance->base->config["data"].end()
                                 ) {
-                                        map_object_instance_json["scale_x"] = map_object_instance.mesh_instance->scale[0];
-                                        map_object_instance_json["scale_y"] = map_object_instance.mesh_instance->scale[1];
-                                        map_object_instance_json["scale_z"] = map_object_instance.mesh_instance->scale[2];
+                                        map_object_instance_json["scale_x"] = map_object_instance->mesh_instance->scale[0];
+                                        map_object_instance_json["scale_y"] = map_object_instance->mesh_instance->scale[1];
+                                        map_object_instance_json["scale_z"] = map_object_instance->mesh_instance->scale[2];
                                 }
-                                if (std::find(map_object_instance.base->config["data"].begin(), map_object_instance.base->config["data"].end(),
-                                        "color") != map_object_instance.base->config["data"].end()
-                                ) { map_object_instance_json["color"] = map_object_instance.mesh_instance->color_RGBA; }
-                                if (map_object_instance.extra_data.size() > 0) { map_object_instance_json["extra_data"] = map_object_instance.extra_data; }
+                                if (std::find(map_object_instance->base->config["data"].begin(), map_object_instance->base->config["data"].end(),
+                                        "color") != map_object_instance->base->config["data"].end()
+                                ) { map_object_instance_json["color"] = map_object_instance->mesh_instance->color_RGBA; }
+                                if (map_object_instance->extra_data.size() > 0) { map_object_instance_json["extra_data"] = map_object_instance->extra_data; }
                                 output.push_back(map_object_instance_json);
                         }
                         std::cout << std::setw(4) << output << std::endl;
