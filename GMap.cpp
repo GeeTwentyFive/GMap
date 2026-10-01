@@ -234,7 +234,10 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                                 ImGui::Begin("INSPECTOR", NULL, ImGuiWindowFlags_AlwaysAutoResize); {
                                         if (std::find(selected_map_object->base->config["data"].begin(), selected_map_object->base->config["data"].end(),
                                                 "position") != selected_map_object->base->config["data"].end()
-                                        ) ImGui::DragFloat3("POSITION", selected_map_object->mesh_instance->position);
+                                        ) {
+                                                ImGui::DragFloat3("POSITION", selected_map_object->mesh_instance->position);
+                                                // TODO: `selected_map_object->mesh_instance->position` -> x_max, x_min, y_max, y_min, z_max, z_min
+                                        }
                                         if (std::find(selected_map_object->base->config["data"].begin(), selected_map_object->base->config["data"].end(),
                                                 "rotation") != selected_map_object->base->config["data"].end()
                                         ) ImGui::DragFloat4("ROTATION", selected_map_object->mesh_instance->rotation);
