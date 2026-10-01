@@ -234,10 +234,7 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                                 ImGui::Begin("INSPECTOR", NULL, ImGuiWindowFlags_AlwaysAutoResize); {
                                         if (std::find(selected_map_object->base->config["data"].begin(), selected_map_object->base->config["data"].end(),
                                                 "position") != selected_map_object->base->config["data"].end()
-                                        ) {
-                                                ImGui::DragFloat3("POSITION", selected_map_object->mesh_instance->position);
-                                                // TODO: `selected_map_object->mesh_instance->position` -> x_max, x_min, y_max, y_min, z_max, z_min
-                                        }
+                                        ) ImGui::DragFloat3("POSITION", selected_map_object->mesh_instance->position);
                                         if (std::find(selected_map_object->base->config["data"].begin(), selected_map_object->base->config["data"].end(),
                                                 "rotation") != selected_map_object->base->config["data"].end()
                                         ) ImGui::DragFloat4("ROTATION", selected_map_object->mesh_instance->rotation);
@@ -281,6 +278,15 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                                 } ImGui::End();
                         }
                 } ImGui::Render();
+
+                if (selected_map_object != nullptr) {
+                        if (selected_map_object->mesh_instance->position[0] > config["GLOBAL_SETTINGS"]["x_max"]) selected_map_object->mesh_instance->position[0] = config["GLOBAL_SETTINGS"]["x_max"];
+                        else if (selected_map_object->mesh_instance->position[0] < config["GLOBAL_SETTINGS"]["x_min"]) selected_map_object->mesh_instance->position[0] = config["GLOBAL_SETTINGS"]["x_min"];
+                        if (selected_map_object->mesh_instance->position[1] > config["GLOBAL_SETTINGS"]["y_max"]) selected_map_object->mesh_instance->position[1] = config["GLOBAL_SETTINGS"]["y_max"];
+                        else if (selected_map_object->mesh_instance->position[1] < config["GLOBAL_SETTINGS"]["y_min"]) selected_map_object->mesh_instance->position[1] = config["GLOBAL_SETTINGS"]["y_min"];
+                        if (selected_map_object->mesh_instance->position[2] > config["GLOBAL_SETTINGS"]["z_max"]) selected_map_object->mesh_instance->position[2] = config["GLOBAL_SETTINGS"]["z_max"];
+                        else if (selected_map_object->mesh_instance->position[2] < config["GLOBAL_SETTINGS"]["z_min"]) selected_map_object->mesh_instance->position[2] = config["GLOBAL_SETTINGS"]["z_min"];
+                }
 
                 static bool _cloned = false;
                 if (gw.key_states[GWindower::KEY_LEFT_ALT] && gw.key_states[GWindower::KEY_D] && selected_map_object != nullptr && !_cloned) { _cloned = true;
