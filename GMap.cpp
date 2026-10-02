@@ -15,6 +15,7 @@
 #include <memory>
 
 #include <nlohmann/json.hpp>
+#include <libGCollision2/libGCollision2.hpp>
 #include <GWindower.hpp>
 #include <glad/glad.h>
 #include <GRenderer3D.hpp>
@@ -76,6 +77,7 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                         "extra_data": {}
                 })");
                 uint64_t gr3d_mesh_id;
+                gcollision2::AABB aabb;
         };
         std::unordered_map<std::string, MapObject> registered_map_objects;
         for (const auto& map_object : config["OBJECTS"]) { if (!map_object.contains("model")) throw std::runtime_error(std::string("MapObject ") + std::string(map_object["name"]) + " is missing key " + R"("model")");
@@ -100,6 +102,7 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                                 DEFAULT_TEXTURE, 1, 1
                         );
                 }
+                // TODO: registration.aabb from mesh's furthest points
                 registered_map_objects[registration.config["name"]] = registration;
         }
 
