@@ -25,3 +25,6 @@
 [submodule "libs/libGRenderer2D"]
 	path = libs/libGRenderer2D
 	url = https://github.com/GeeTwentyFive/libGRenderer2D.git
+[submodule "libs/libGCollision2"]
+	path = libs/libGCollision2
+	url = https://github.com/GeeTwentyFive/libGCollision2.git
