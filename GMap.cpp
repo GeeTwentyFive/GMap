@@ -63,7 +63,7 @@ std::string JSONHasKeys(const nlohmann::json &json, const std::vector<std::strin
 
 int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(CONFIG_FILE)) { std::ofstream(CONFIG_FILE) << std::setw(4) << DEFAULT_CONFIG << std::endl; throw std::runtime_error(CONFIG_FILE + " not found; new one has been created with global defaults. Populate its OBJECTS array with MapObjects"); }
         nlohmann::json config; std::ifstream(CONFIG_FILE) >> config; if (!config.contains("GLOBAL_SETTINGS")) throw std::runtime_error(CONFIG_FILE + " is missing key GLOBAL_SETTINGS"); if (!config.contains("OBJECTS")) throw std::runtime_error(CONFIG_FILE + " is missing key OBJECTS");
-        std::string _result; _result = JSONHasKeys(config["GLOBAL_SETTINGS"], {"x_max", "x_min", "y_max", "y_min", "z_max", "z_min"}); if (_result != "") throw std::runtime_error(CONFIG_FILE + " is missing key " + _result + " in GLOBAL_SETTINGS");
+        {std::string _result; _result = JSONHasKeys(config["GLOBAL_SETTINGS"], {"x_max", "x_min", "y_max", "y_min", "z_max", "z_min"}); if (_result != "") throw std::runtime_error(CONFIG_FILE + " is missing key " + _result + " in GLOBAL_SETTINGS");}
         if (config["OBJECTS"].size() == 0) throw std::runtime_error(CONFIG_FILE + " has no MapObjects in OBJECTS array");
 
         GWindower gw{0, 0, 4, 6}; gw.locked_mouse = false; if (!gladLoadGL()) ERROR("Failed to load OpenGL functions");
@@ -77,11 +77,13 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                         "extra_data": {}
                 })");
                 uint64_t gr3d_mesh_id;
-                gcollision2::AABB aabb;
+                gcollision2::AABB aabb{{0, 0, 0}, {0, 0, 0}};
         };
+
         std::unordered_map<std::string, MapObject> registered_map_objects;
         for (const auto& map_object : config["OBJECTS"]) { if (!map_object.contains("model")) throw std::runtime_error(std::string("MapObject ") + std::string(map_object["name"]) + " is missing key " + R"("model")");
-                MapObject registration; JSONAddIfHasKeys(map_object, registration.config, {"model", "name", "data", "extra_data"}); if (!map_object.contains("name") || map_object["name"] == "") { registration.config["name"] = std::filesystem::path(map_object["model"]).stem().string(); } if (registered_map_objects.contains(registration.config["name"])) throw std::runtime_error(std::string("MapObject with name ") + std::string(registration.config["name"]) + " is already registered");
+                MapObject registration;
+                JSONAddIfHasKeys(map_object, registration.config, {"model", "name", "data", "extra_data"}); if (!map_object.contains("name") || map_object["name"] == "") { registration.config["name"] = std::filesystem::path(map_object["model"]).stem().string(); } if (registered_map_objects.contains(registration.config["name"])) throw std::runtime_error(std::string("MapObject with name ") + std::string(registration.config["name"]) + " is already registered");
                 if (!std::filesystem::is_regular_file(registration.config["model"])) throw std::runtime_error(std::string(registration.config["model"]) + " not found");
                 GOBJ mesh_data(registration.config["model"]);
                 std::string texture_path = std::filesystem::path(registration.config["model"]).replace_extension(".png");
@@ -102,7 +104,14 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                                 DEFAULT_TEXTURE, 1, 1
                         );
                 }
-                // TODO: registration.aabb from mesh's furthest points
+                for (const GOBJ::Vertex& vertex : mesh_data.vertices) {
+                        if (vertex.pos[0] < registration.aabb.min.x) registration.aabb.min.x = vertex.pos[0];
+                        else if (vertex.pos[0] > registration.aabb.max.x) registration.aabb.max.x = vertex.pos[0];
+                        if (vertex.pos[1] < registration.aabb.min.y) registration.aabb.min.y = vertex.pos[1];
+                        else if (vertex.pos[1] > registration.aabb.max.y) registration.aabb.max.y = vertex.pos[1];
+                        if (vertex.pos[2] < registration.aabb.min.z) registration.aabb.min.z = vertex.pos[2];
+                        else if (vertex.pos[2] > registration.aabb.max.z) registration.aabb.max.z = vertex.pos[2];
+                }
                 registered_map_objects[registration.config["name"]] = registration;
         }
 
