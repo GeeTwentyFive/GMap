@@ -13,6 +13,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 #include <memory>
+#include <algorithm>
 
 #include <nlohmann/json.hpp>
 #include <libGCollision2/libGCollision2.hpp>
@@ -279,7 +280,23 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                                         ) ImGui::DragFloat3("POSITION", selected_map_object->mesh_instance->position);
                                         if (std::find(selected_map_object->base->config["data"].begin(), selected_map_object->base->config["data"].end(),
                                                 "rotation") != selected_map_object->base->config["data"].end()
-                                        ) ImGui::DragFloat4("ROTATION", selected_map_object->mesh_instance->rotation);
+                                        ) {
+                                                float rot_euler[3] = {
+                                                        atan2(2*(selected_map_object->mesh_instance->rotation[3]*selected_map_object->mesh_instance->rotation[0] + selected_map_object->mesh_instance->rotation[1]*selected_map_object->mesh_instance->rotation[2]), 1 - 2*(selected_map_object->mesh_instance->rotation[0]*selected_map_object->mesh_instance->rotation[0] + selected_map_object->mesh_instance->rotation[1]*selected_map_object->mesh_instance->rotation[1])) * (float)(180/M_PI),
+                                                        asin(2*(selected_map_object->mesh_instance->rotation[3]*selected_map_object->mesh_instance->rotation[1] - selected_map_object->mesh_instance->rotation[2]*selected_map_object->mesh_instance->rotation[0])) * (float)(180/M_PI),
+                                                        atan2(2*(selected_map_object->mesh_instance->rotation[3]*selected_map_object->mesh_instance->rotation[2] + selected_map_object->mesh_instance->rotation[0]*selected_map_object->mesh_instance->rotation[1]), 1 - 2*(selected_map_object->mesh_instance->rotation[1]*selected_map_object->mesh_instance->rotation[1] + selected_map_object->mesh_instance->rotation[2]*selected_map_object->mesh_instance->rotation[2])) * (float)(180/M_PI)
+                                                }; if (rot_euler[0] != rot_euler[0]) rot_euler[0] = 0.0f; if (rot_euler[1] != rot_euler[1]) rot_euler[1] = 0.0f; if (rot_euler[2] != rot_euler[2]) rot_euler[2] = 0.0f;  // (NaN fix)
+                                                if (ImGui::DragFloat3("ROTATION", rot_euler, 1.0f, -180.0f, 180.0f)) {
+                                                        float4 rot_quat = linalg::qmul(
+                                                                linalg::rotation_quat(float3{0, 0, 1}, rot_euler[2]*(float)(M_PI/180)),
+                                                                linalg::qmul(
+                                                                        linalg::rotation_quat(float3{0, 1, 0}, rot_euler[1]*(float)(M_PI/180)),
+                                                                        linalg::rotation_quat(float3{1, 0, 0}, rot_euler[0]*(float)(M_PI/180))
+                                                                )
+                                                        );
+                                                        selected_map_object->mesh_instance->rotation[0] = rot_quat.x; selected_map_object->mesh_instance->rotation[1] = rot_quat.y; selected_map_object->mesh_instance->rotation[2] = rot_quat.z; selected_map_object->mesh_instance->rotation[3] = rot_quat.w;
+                                                }
+                                        }
                                         if (std::find(selected_map_object->base->config["data"].begin(), selected_map_object->base->config["data"].end(),
                                                 "scale") != selected_map_object->base->config["data"].end()
                                         ) ImGui::DragFloat3("SCALE", selected_map_object->mesh_instance->scale);
