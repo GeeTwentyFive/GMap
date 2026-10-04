@@ -78,7 +78,7 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                         "extra_data": {}
                 })");
                 uint64_t gr3d_mesh_id;
-                gcollision2::AABB aabb{{0, 0, 0}, {0, 0, 0}};
+                gcollision2::AABB aabb{{FLT_MAX, FLT_MAX, FLT_MAX}, {-FLT_MAX, -FLT_MAX, -FLT_MAX}};
         };
 
         std::unordered_map<std::string, MapObject> registered_map_objects;
@@ -240,17 +240,33 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                                 };
                                 float closest_hit_map_object_distance = FLT_MAX;
                                 for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) {
-                                        float4x4 map_object_instance_aabb_transform = linalg::mul(
+                                        float4x4 map_object_instance_transform = linalg::mul(
                                                 linalg::translation_matrix(float3{map_object_instance->mesh_instance->position[0], map_object_instance->mesh_instance->position[1], map_object_instance->mesh_instance->position[2]}),
                                                 linalg::mul(
                                                         linalg::rotation_matrix(float4{map_object_instance->mesh_instance->rotation[0], map_object_instance->mesh_instance->rotation[1], map_object_instance->mesh_instance->rotation[2], map_object_instance->mesh_instance->rotation[3]}),
                                                         linalg::scaling_matrix(float3{map_object_instance->mesh_instance->scale[0], map_object_instance->mesh_instance->scale[1], map_object_instance->mesh_instance->scale[2]})
                                                 )
                                         );
-                                        gcollision2::AABB map_object_instance_aabb{
-                                                linalg::mul(map_object_instance_aabb_transform, float4{map_object_instance->base->aabb.min, 1.0f}).xyz(),
-                                                linalg::mul(map_object_instance_aabb_transform, float4{map_object_instance->base->aabb.max, 1.0f}).xyz()
+                                        float3 map_object_instance_aabb_cuboid[8]{
+                                                {map_object_instance->base->aabb.min.x, map_object_instance->base->aabb.min.y, map_object_instance->base->aabb.min.z},
+                                                {map_object_instance->base->aabb.min.x, map_object_instance->base->aabb.min.y, map_object_instance->base->aabb.max.z},
+                                                {map_object_instance->base->aabb.min.x, map_object_instance->base->aabb.max.y, map_object_instance->base->aabb.min.z},
+                                                {map_object_instance->base->aabb.min.x, map_object_instance->base->aabb.max.y, map_object_instance->base->aabb.max.z},
+                                                {map_object_instance->base->aabb.max.x, map_object_instance->base->aabb.min.y, map_object_instance->base->aabb.min.z},
+                                                {map_object_instance->base->aabb.max.x, map_object_instance->base->aabb.min.y, map_object_instance->base->aabb.max.z},
+                                                {map_object_instance->base->aabb.max.x, map_object_instance->base->aabb.max.y, map_object_instance->base->aabb.min.z},
+                                                {map_object_instance->base->aabb.max.x, map_object_instance->base->aabb.max.y, map_object_instance->base->aabb.max.z}
                                         };
+                                        for (float3& vertex : map_object_instance_aabb_cuboid) vertex = linalg::mul(map_object_instance_transform, float4{vertex, 1.0f}).xyz();
+                                        gcollision2::AABB map_object_instance_aabb{{FLT_MAX, FLT_MAX, FLT_MAX}, {-FLT_MAX, -FLT_MAX, -FLT_MAX}};
+                                        for (const float3& vertex : map_object_instance_aabb_cuboid) {
+                                                if (vertex.x < map_object_instance_aabb.min.x) map_object_instance_aabb.min.x = vertex.x;
+                                                else if (vertex.x > map_object_instance_aabb.max.x) map_object_instance_aabb.max.x = vertex.x;
+                                                if (vertex.y < map_object_instance_aabb.min.y) map_object_instance_aabb.min.y = vertex.y;
+                                                else if (vertex.y > map_object_instance_aabb.max.y) map_object_instance_aabb.max.y = vertex.y;
+                                                if (vertex.z < map_object_instance_aabb.min.z) map_object_instance_aabb.min.z = vertex.z;
+                                                else if (vertex.z > map_object_instance_aabb.max.z) map_object_instance_aabb.max.z = vertex.z;
+                                        }
                                         if (map_object_instance_aabb.ContainsPoint(float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]})) continue;  // (skip if camera is inside of obj (to make it so you can select objs inside of other objs))
                                         gcollision2::RayHitExtraInfo extra_hit_info;
                                         if (gcollision2::IntersectRayAABB(
