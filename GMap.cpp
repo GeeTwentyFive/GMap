@@ -230,8 +230,21 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                         gr3d.camera_pos[0] += -move_dir.x * camera_move_speed * delta_time;
                         gr3d.camera_pos[2] += -move_dir.y * camera_move_speed * delta_time;
                         if (gw.key_states[GWindower::KEY_ZERO]) { gr3d.camera_pos[0] = 0; gr3d.camera_pos[1] = 0; gr3d.camera_pos[2] = 0; }
-                }
-                else { gw.locked_mouse = false; }
+
+                        if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT]) {
+                                float3 ray_dir{
+                                        cosf(gr3d.camera_yaw*(2*M_PI/65536)) * cosf(gr3d.camera_pitch*(2*M_PI/65536)),
+                                        sinf(gr3d.camera_pitch*(2*M_PI/65536)),
+                                        sinf(gr3d.camera_yaw*(2*M_PI/65536)) * cosf(gr3d.camera_pitch*(2*M_PI/65536))
+                                };
+                                float closest_hit_map_object_distance = FLT_MAX;
+                                for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) {
+                                        gcollision2::AABB map_object_instance_aabb = map_object_instance->base->aabb;
+                                        // TODO
+                                }
+                                if (closest_hit_map_object_distance == FLT_MAX) selected_map_object = nullptr;  // (none hit; deselect)
+                        }
+                } else gw.locked_mouse = false;
 
                 ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame(); ImGui::NewFrame(); ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode); {
                         ImGui::Begin("ADD", NULL, ImGuiWindowFlags_AlwaysAutoResize); {
