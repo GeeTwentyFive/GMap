@@ -232,7 +232,8 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                         gr3d.camera_pos[2] += -move_dir.y * camera_move_speed * delta_time;
                         if (gw.key_states[GWindower::KEY_ZERO]) { gr3d.camera_pos[0] = 0; gr3d.camera_pos[1] = 0; gr3d.camera_pos[2] = 0; }
 
-                        if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT]) {
+                        static bool _obj_pick_ray_casted = false;
+                        if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !_obj_pick_ray_casted) { _obj_pick_ray_casted = true;
                                 float3 ray_dir{
                                         cosf((gr3d.camera_yaw*(2*M_PI/65536))-M_PI/2) * cosf(gr3d.camera_pitch*(2*M_PI/65536)),
                                         sinf(gr3d.camera_pitch*(2*M_PI/65536)),
@@ -279,18 +280,18 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                                         }
                                 }
                                 if (closest_hit_map_object_distance == FLT_MAX) selected_map_object = nullptr;  // (none hit; deselect)
-                        }
+                        } else if (!gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT]) _obj_pick_ray_casted = false;
                 } else gw.locked_mouse = false;
 
                 ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame(); ImGui::NewFrame(); ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode); {
-                        ImGui::Begin("ADD", NULL, ImGuiWindowFlags_AlwaysAutoResize); {
+                        ImGui::Begin("ADD", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing)); {
                                 for (const auto& [map_object, _] : registered_map_objects) {
                                         if (ImGui::Button(map_object.c_str())) { selected_map_object = InstantiateMapObject(map_object, gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]); }
                                 }
                         } ImGui::End();
 
                         if (selected_map_object != nullptr) {
-                                ImGui::Begin("INSPECTOR", NULL, ImGuiWindowFlags_AlwaysAutoResize); {
+                                ImGui::Begin("INSPECTOR", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing)); {
                                         if (std::find(selected_map_object->base->config["data"].begin(), selected_map_object->base->config["data"].end(),
                                                 "position") != selected_map_object->base->config["data"].end()
                                         ) ImGui::DragFloat3("POSITION", selected_map_object->mesh_instance->position);
