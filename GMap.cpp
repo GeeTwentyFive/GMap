@@ -233,14 +233,33 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
 
                         if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT]) {
                                 float3 ray_dir{
-                                        cosf(gr3d.camera_yaw*(2*M_PI/65536)) * cosf(gr3d.camera_pitch*(2*M_PI/65536)),
+                                        cosf((gr3d.camera_yaw*(2*M_PI/65536))-M_PI/2) * cosf(gr3d.camera_pitch*(2*M_PI/65536)),
                                         sinf(gr3d.camera_pitch*(2*M_PI/65536)),
-                                        sinf(gr3d.camera_yaw*(2*M_PI/65536)) * cosf(gr3d.camera_pitch*(2*M_PI/65536))
+                                        sinf((gr3d.camera_yaw*(2*M_PI/65536))-M_PI/2) * cosf(gr3d.camera_pitch*(2*M_PI/65536))
                                 };
                                 float closest_hit_map_object_distance = FLT_MAX;
                                 for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) {
-                                        gcollision2::AABB map_object_instance_aabb = map_object_instance->base->aabb;
-                                        // TODO
+                                        float4x4 map_object_instance_aabb_transform = linalg::mul(
+                                                linalg::translation_matrix(float3{map_object_instance->mesh_instance->position[0], map_object_instance->mesh_instance->position[1], map_object_instance->mesh_instance->position[2]}),
+                                                linalg::mul(
+                                                        linalg::rotation_matrix(float4{map_object_instance->mesh_instance->rotation[0], map_object_instance->mesh_instance->rotation[1], map_object_instance->mesh_instance->rotation[2], map_object_instance->mesh_instance->rotation[3]}),
+                                                        linalg::scaling_matrix(float3{map_object_instance->mesh_instance->scale[0], map_object_instance->mesh_instance->scale[1], map_object_instance->mesh_instance->scale[2]})
+                                                )
+                                        );
+                                        gcollision2::AABB map_object_instance_aabb{
+                                                linalg::mul(map_object_instance_aabb_transform, float4{map_object_instance->base->aabb.min, 1.0f}).xyz(),
+                                                linalg::mul(map_object_instance_aabb_transform, float4{map_object_instance->base->aabb.max, 1.0f}).xyz()
+                                        };
+                                        if (map_object_instance_aabb.ContainsPoint(float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]})) continue;  // (skip if camera is inside of obj (to make it so you can select objs inside of other objs))
+                                        gcollision2::RayHitExtraInfo extra_hit_info;
+                                        if (gcollision2::IntersectRayAABB(
+                                                float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]},
+                                                ray_dir,
+                                                map_object_instance_aabb,
+                                                &extra_hit_info
+                                        )) if (extra_hit_info.distance < closest_hit_map_object_distance) { closest_hit_map_object_distance = extra_hit_info.distance;
+                                                selected_map_object = map_object_instance.get();
+                                        }
                                 }
                                 if (closest_hit_map_object_distance == FLT_MAX) selected_map_object = nullptr;  // (none hit; deselect)
                         }
