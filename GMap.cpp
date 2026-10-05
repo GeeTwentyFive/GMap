@@ -214,7 +214,7 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                 glViewport(0, 0, gw.window_width, gw.window_height);  // (leaving this inside of the mainloop in case I want to support windowed operation in the future)
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-                if (gw.mouse_button_states[GWindower::MOUSEBUTTON_RIGHT]) { gw.locked_mouse = true;
+                if (gw.mouse_button_states[GWindower::MOUSEBUTTON_RIGHT]) { if (gw.locked_mouse == false) { gw.locked_mouse = true; gw.mouse_x = gw.window_width/2; gw.mouse_y = gw.window_height/2; }
                         gr3d.camera_yaw += gw.mouse_x * CAMERA_SENSITIVITY;
                         gr3d.camera_pitch += gw.mouse_y * CAMERA_SENSITIVITY;
                         static int camera_move_speed = STARTING_CAMERA_MOVE_SPEED;
