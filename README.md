@@ -1,7 +1,5 @@
 ![](_assets/GMap.webp)
 
-WIP
-
 Intended to be used either directly for new games/engines by reading from output JSON, or by feeding JSON into custom converter program which would convert it to an already existing map file format for an existing game/engine
 
 
@@ -41,7 +39,8 @@ You can pass path to map/scene JSON as first CLI arg to `GMap` to load it
 	- Mouse = rotate camera
 	- WASD, Space, CTRL = move camera
 	- Scroll = change camera move speed
-	- Click = select/deselect MapObject instance
+	- Click = select/deselect object
 	- 0 = reset camera position to 0, 0, 0
-- Alt+D = duplicate selected MapObject instance
-- Del = delete selected MapObject instance
+- Alt+D = duplicate selected object
+- Del = delete selected object
+- Alt+H = Hide/Show UI

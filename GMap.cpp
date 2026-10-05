@@ -42,7 +42,7 @@ const int STARTING_CAMERA_MOVE_SPEED = 8;
 
 const std::string CONFIG_FILE = "GMap.json";
 
-int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(CONFIG_FILE)) throw std::runtime_error(CONFIG_FILE + " not found");
+int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(CONFIG_FILE)) throw std::runtime_error(CONFIG_FILE + " not found in current working directory");
         nlohmann::json config; std::ifstream(CONFIG_FILE) >> config; if (config.type() != nlohmann::json::value_t::array) throw std::runtime_error(CONFIG_FILE + " root is not an array");
         if (config.size() == 0) throw std::runtime_error(CONFIG_FILE + " has no MapObjects");
 
@@ -191,9 +191,6 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
         while (gw.Update(true, 0.1, true)) {
                 double delta_time = gfp.Wait();
 
-                glViewport(0, 0, gw.window_width, gw.window_height);  // (leaving this inside of the mainloop in case I want to support windowed operation in the future)
-                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
                 if (gw.mouse_button_states[GWindower::MOUSEBUTTON_RIGHT]) { if (gw.locked_mouse == false) { gw.locked_mouse = true; gw.mouse_x = gw.window_width/2; gw.mouse_y = gw.window_height/2; }
                         gr3d.camera_yaw += gw.mouse_x * CAMERA_SENSITIVITY;
                         gr3d.camera_pitch += gw.mouse_y * CAMERA_SENSITIVITY;
@@ -263,7 +260,36 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                         } else if (!gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT]) _obj_pick_ray_casted = false;
                 } else gw.locked_mouse = false;
 
-                ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame(); ImGui::NewFrame(); ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode); {
+                static bool _cloned = false;
+                if (gw.key_states[GWindower::KEY_LEFT_ALT] && gw.key_states[GWindower::KEY_D] && selected_map_object != nullptr && !_cloned) { _cloned = true;
+                        MapObjectInstance* clone = InstantiateMapObject(
+                                selected_map_object->base->config["name"],
+                                selected_map_object->mesh_instance->position[0], selected_map_object->mesh_instance->position[1], selected_map_object->mesh_instance->position[2],
+                                selected_map_object->mesh_instance->rotation[0], selected_map_object->mesh_instance->rotation[1], selected_map_object->mesh_instance->rotation[2], selected_map_object->mesh_instance->rotation[3],
+                                selected_map_object->mesh_instance->scale[0], selected_map_object->mesh_instance->scale[1], selected_map_object->mesh_instance->scale[2],
+                                selected_map_object->mesh_instance->color_RGBA
+                        );
+                        clone->extra_data = selected_map_object->extra_data;
+                        selected_map_object = clone;
+                } else if (!gw.key_states[GWindower::KEY_D]) _cloned = false;
+
+                if (gw.key_states[GWindower::KEY_DELETE] && selected_map_object != nullptr) {
+                        for (auto it = map_object_instances.begin(); it != map_object_instances.end(); it++) {
+                                if (it->get()->uid == selected_map_object->uid) {
+                                        it->get()->mesh_instance->Remove();
+                                        map_object_instances.erase(it); break;
+                                }
+                        }
+                        selected_map_object = nullptr;
+                }
+
+                static bool show_ui = true;
+
+                static bool _show_ui_toggled = false;
+                if (gw.key_states[GWindower::KEY_LEFT_ALT] && gw.key_states[GWindower::KEY_H] && !_show_ui_toggled) { _show_ui_toggled = true; show_ui = !show_ui; }
+                else if (!gw.key_states[GWindower::KEY_H]) _show_ui_toggled = false;
+
+                if (show_ui) { ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame(); ImGui::NewFrame(); ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode); {
                         ImGui::Begin("ADD", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing)); {
                                 for (const auto& [map_object, _] : registered_map_objects) {
                                         if (ImGui::Button(map_object.c_str())) { selected_map_object = InstantiateMapObject(map_object, gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]); }
@@ -330,37 +356,17 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                                         } ImGui::PopID(); _uid++; }
                                 } ImGui::End();
                         }
-                } ImGui::Render();
+                } ImGui::Render(); }
 
-                static bool _cloned = false;
-                if (gw.key_states[GWindower::KEY_LEFT_ALT] && gw.key_states[GWindower::KEY_D] && selected_map_object != nullptr && !_cloned) { _cloned = true;
-                        MapObjectInstance* clone = InstantiateMapObject(
-                                selected_map_object->base->config["name"],
-                                selected_map_object->mesh_instance->position[0], selected_map_object->mesh_instance->position[1], selected_map_object->mesh_instance->position[2],
-                                selected_map_object->mesh_instance->rotation[0], selected_map_object->mesh_instance->rotation[1], selected_map_object->mesh_instance->rotation[2], selected_map_object->mesh_instance->rotation[3],
-                                selected_map_object->mesh_instance->scale[0], selected_map_object->mesh_instance->scale[1], selected_map_object->mesh_instance->scale[2],
-                                selected_map_object->mesh_instance->color_RGBA
-                        );
-                        clone->extra_data = selected_map_object->extra_data;
-                        selected_map_object = clone;
-                } else if (!gw.key_states[GWindower::KEY_LEFT_ALT] && !gw.key_states[GWindower::KEY_D]) _cloned = false;
-
-                if (gw.key_states[GWindower::KEY_DELETE] && selected_map_object != nullptr) {
-                        for (auto it = map_object_instances.begin(); it != map_object_instances.end(); it++) {
-                                if (it->get()->uid == selected_map_object->uid) {
-                                        it->get()->mesh_instance->Remove();
-                                        map_object_instances.erase(it); break;
-                                }
-                        }
-                        selected_map_object = nullptr;
-                }
-
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); glViewport(0, 0, gw.window_width, gw.window_height);  // (leaving this inside of the mainloop in case I want to support windowed operation in the future)
                 gr3d.DrawFrame(gw.window_width, gw.window_height);
-                ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-                glClear(GL_DEPTH_BUFFER_BIT);
-                crosshair_sprite->size[0] = gw.window_height/180.0; crosshair_sprite->size[1] = gw.window_height/180.0;
-                crosshair_sprite->position[0] = (gw.window_width/2.0 - crosshair_sprite->size[0]/2.0); crosshair_sprite->position[1] = (gw.window_height/2.0 - crosshair_sprite->size[1]/2.0);
-                gr2d.DrawFrame(gw.window_width, gw.window_height);
+                if (show_ui) {
+                        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+                        glClear(GL_DEPTH_BUFFER_BIT);
+                        crosshair_sprite->size[0] = gw.window_height/180.0; crosshair_sprite->size[1] = gw.window_height/180.0;
+                        crosshair_sprite->position[0] = (gw.window_width/2.0 - crosshair_sprite->size[0]/2.0); crosshair_sprite->position[1] = (gw.window_height/2.0 - crosshair_sprite->size[1]/2.0);
+                        gr2d.DrawFrame(gw.window_width, gw.window_height);
+                }
 
 
                 if(gw.key_states[GWindower::KEY_ESCAPE]) {
