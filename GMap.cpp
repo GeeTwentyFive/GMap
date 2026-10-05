@@ -312,9 +312,6 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                                         ImGui::NewLine();
                                         uint64_t _uid = 0;
                                         for (auto& [label, val] : selected_map_object->extra_data.items()) { ImGui::PushID(_uid); switch (val.type()) { default: break;
-                                                case (nlohmann::json::value_t::null): {
-                                                        ImGui::TextUnformatted(label.c_str());
-                                                } break;
                                                 case (nlohmann::json::value_t::boolean): { bool _val = val;
                                                         ImGui::Checkbox(label.c_str(), &_val); val = _val;
                                                 } break;

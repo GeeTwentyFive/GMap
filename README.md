@@ -22,7 +22,7 @@ You can pass path to map/scene JSON as first CLI arg to `GMap` to load it
                 "model": "PATH/TO/MODEL.obj",  // (optional texture has to be PNG with same base name in same dir as model)
                 "name": "",  // (default = model base name)
                 "data": [],  // one or more of: "position", "rotation", "scale", "color"
-                "extra_data": {  // (appears in inspector) (null, bool, number, string)
+                "extra_data": {  // (appears in inspector) (bool, number, string)
                         "example_1": 7.27,
                         "example_2": false
                 }
