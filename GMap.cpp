@@ -133,26 +133,26 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                         if (std::find(registered_map_objects[map_object_instance_json["name"]].config["data"].begin(), registered_map_objects[map_object_instance_json["name"]].config["data"].end(),
                                 "position") != registered_map_objects[map_object_instance_json["name"]].config["data"].end()
                         ) {
-                                pos_x = map_object_instance_json["pos_x"];
-                                pos_y = map_object_instance_json["pos_y"];
-                                pos_z = map_object_instance_json["pos_z"];
+                                pos_x = map_object_instance_json["position"][0];
+                                pos_y = map_object_instance_json["position"][1];
+                                pos_z = map_object_instance_json["position"][2];
                         }
                         float rot_x = 0; float rot_y = 0; float rot_z = 0; float rot_w = 1;
                         if (std::find(registered_map_objects[map_object_instance_json["name"]].config["data"].begin(), registered_map_objects[map_object_instance_json["name"]].config["data"].end(),
                                 "rotation") != registered_map_objects[map_object_instance_json["name"]].config["data"].end()
                         ) {
-                                rot_x = map_object_instance_json["rot_x"];
-                                rot_y = map_object_instance_json["rot_y"];
-                                rot_z = map_object_instance_json["rot_z"];
-                                rot_w = map_object_instance_json["rot_w"];
+                                rot_x = map_object_instance_json["rotation"][0];
+                                rot_y = map_object_instance_json["rotation"][1];
+                                rot_z = map_object_instance_json["rotation"][2];
+                                rot_w = map_object_instance_json["rotation"][3];
                         }
                         float scale_x = 1.0; float scale_y = 1.0; float scale_z = 1.0;
                         if (std::find(registered_map_objects[map_object_instance_json["name"]].config["data"].begin(), registered_map_objects[map_object_instance_json["name"]].config["data"].end(),
                                 "scale") != registered_map_objects[map_object_instance_json["name"]].config["data"].end()
                         ) {
-                                scale_x = map_object_instance_json["scale_x"];
-                                scale_y = map_object_instance_json["scale_y"];
-                                scale_z = map_object_instance_json["scale_z"];
+                                scale_x = map_object_instance_json["scale"][0];
+                                scale_y = map_object_instance_json["scale"][1];
+                                scale_z = map_object_instance_json["scale"][2];
                         }
                         uint32_t color = 0xFFFFFFFF;
                         if (std::find(registered_map_objects[map_object_instance_json["name"]].config["data"].begin(), registered_map_objects[map_object_instance_json["name"]].config["data"].end(),
@@ -370,26 +370,13 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                                 map_object_instance_json["name"] = map_object_instance->base->config["name"];
                                 if (std::find(map_object_instance->base->config["data"].begin(), map_object_instance->base->config["data"].end(),
                                         "position") != map_object_instance->base->config["data"].end()
-                                ) {
-                                        map_object_instance_json["pos_x"] = map_object_instance->mesh_instance->position[0];
-                                        map_object_instance_json["pos_y"] = map_object_instance->mesh_instance->position[1];
-                                        map_object_instance_json["pos_z"] = map_object_instance->mesh_instance->position[2];
-                                }
+                                ) map_object_instance_json["position"] = nlohmann::json::array({map_object_instance->mesh_instance->position[0], map_object_instance->mesh_instance->position[1], map_object_instance->mesh_instance->position[2]});
                                 if (std::find(map_object_instance->base->config["data"].begin(), map_object_instance->base->config["data"].end(),
                                         "rotation") != map_object_instance->base->config["data"].end()
-                                ) {
-                                        map_object_instance_json["rot_x"] = map_object_instance->mesh_instance->rotation[0];
-                                        map_object_instance_json["rot_y"] = map_object_instance->mesh_instance->rotation[1];
-                                        map_object_instance_json["rot_z"] = map_object_instance->mesh_instance->rotation[2];
-                                        map_object_instance_json["rot_w"] = map_object_instance->mesh_instance->rotation[3];
-                                }
+                                ) map_object_instance_json["rotation"] = nlohmann::json::array({map_object_instance->mesh_instance->rotation[0], map_object_instance->mesh_instance->rotation[1], map_object_instance->mesh_instance->rotation[2], map_object_instance->mesh_instance->rotation[3]});
                                 if (std::find(map_object_instance->base->config["data"].begin(), map_object_instance->base->config["data"].end(),
                                         "scale") != map_object_instance->base->config["data"].end()
-                                ) {
-                                        map_object_instance_json["scale_x"] = map_object_instance->mesh_instance->scale[0];
-                                        map_object_instance_json["scale_y"] = map_object_instance->mesh_instance->scale[1];
-                                        map_object_instance_json["scale_z"] = map_object_instance->mesh_instance->scale[2];
-                                }
+                                ) map_object_instance_json["scale"] = nlohmann::json::array({map_object_instance->mesh_instance->scale[0], map_object_instance->mesh_instance->scale[1], map_object_instance->mesh_instance->scale[2]});
                                 if (std::find(map_object_instance->base->config["data"].begin(), map_object_instance->base->config["data"].end(),
                                         "color") != map_object_instance->base->config["data"].end()
                                 ) { map_object_instance_json["color"] = map_object_instance->mesh_instance->color_RGBA; }
