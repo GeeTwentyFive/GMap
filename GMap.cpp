@@ -170,9 +170,7 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                 }
         }
 
-        ImGui::CreateContext(); ImGui_ImplGlfw_InitForOpenGL((GLFWwindow*)(gw._glfwWindow), true); ImGui_ImplOpenGL3_Init("#version 460 core"); ImGui::GetIO().ConfigFlags |= (ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_NoMouseCursorChange); ImGui::GetIO().IniFilename = NULL;
-        static const std::string IMGUI_CACHE_PATH = (std::filesystem::temp_directory_path() / std::filesystem::path(argv[0]).stem()).string()+"_imgui.ini";
-        if (std::filesystem::is_regular_file(IMGUI_CACHE_PATH)) ImGui::LoadIniSettingsFromDisk(IMGUI_CACHE_PATH.c_str());
+        ImGui::CreateContext(); ImGui_ImplGlfw_InitForOpenGL((GLFWwindow*)(gw._glfwWindow), true); ImGui_ImplOpenGL3_Init("#version 460 core"); ImGui::GetIO().ConfigFlags |= (ImGuiConfigFlags_NoMouseCursorChange); ImGui::GetIO().IniFilename = NULL;
 
         GRenderer2D gr2d;
         static const uint32_t CROSSHAIR_TEXTURE[] = {
@@ -289,15 +287,17 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                 if (gw.key_states[GWindower::KEY_LEFT_ALT] && gw.key_states[GWindower::KEY_H] && !_show_ui_toggled) { _show_ui_toggled = true; show_ui = !show_ui; }
                 else if (!gw.key_states[GWindower::KEY_H]) _show_ui_toggled = false;
 
-                if (show_ui) { ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame(); ImGui::NewFrame(); ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode); {
-                        ImGui::Begin("ADD", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing)); {
+                if (show_ui) { ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame(); ImGui::NewFrame(); {
+                        ImGui::SetNextWindowPos({(float)gw.window_width, 0.0f}, ImGuiCond_Always, {1.0f, 0.0f});
+                        ImGui::Begin("ADD", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
                                 for (const auto& [map_object, _] : registered_map_objects) {
                                         if (ImGui::Button(map_object.c_str())) { selected_map_object = InstantiateMapObject(map_object, gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]); }
                                 }
                         } ImGui::End();
 
                         if (selected_map_object != nullptr) {
-                                ImGui::Begin("INSPECTOR", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing)); {
+                                ImGui::SetNextWindowPos({0.0f, 0.0f}, ImGuiCond_Always, {0.0f, 0.0f});
+                                ImGui::Begin("INSPECTOR", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
                                         if (std::find(selected_map_object->base->config["data"].begin(), selected_map_object->base->config["data"].end(),
                                                 "position") != selected_map_object->base->config["data"].end()
                                         ) ImGui::DragFloat3("POSITION", selected_map_object->mesh_instance->position);
@@ -335,25 +335,26 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                                                 _temp = color.y; color.y = color.z; color.z = _temp;
                                                 selected_map_object->mesh_instance->color_RGBA = ImGui::ColorConvertFloat4ToU32(color);
                                         }
-                                        ImGui::NewLine();
-                                        uint64_t _uid = 0;
-                                        for (auto& [label, val] : selected_map_object->extra_data.items()) { ImGui::PushID(_uid); switch (val.type()) { default: break;
-                                                case (nlohmann::json::value_t::boolean): { bool _val = val;
-                                                        ImGui::Checkbox(label.c_str(), &_val); val = _val;
-                                                } break;
-                                                case (nlohmann::json::value_t::number_float): { float _val = val;
-                                                        ImGui::InputFloat(label.c_str(), &_val, 0, 0, "%f"); val = _val;
-                                                } break;
-                                                case (nlohmann::json::value_t::number_integer): { int64_t _val = val;
-                                                        ImGui::InputScalar(label.c_str(), ImGuiDataType_S64, &_val); val = _val;
-                                                } break;
-                                                case (nlohmann::json::value_t::number_unsigned): { uint64_t _val = val;
-                                                        ImGui::InputScalar(label.c_str(), ImGuiDataType_U64, &_val); val = _val;
-                                                } break;
-                                                case (nlohmann::json::value_t::string): { std::string _val = val;
-                                                        ImGui::InputText(label.c_str(), &_val); val = _val;
-                                                } break;
-                                        } ImGui::PopID(); _uid++; }
+                                        if (selected_map_object->extra_data.size() > 0) { ImGui::NewLine();
+                                                uint64_t _uid = 0;
+                                                for (auto& [label, val] : selected_map_object->extra_data.items()) { ImGui::PushID(_uid); switch (val.type()) { default: break;
+                                                        case (nlohmann::json::value_t::boolean): { bool _val = val;
+                                                                ImGui::Checkbox(label.c_str(), &_val); val = _val;
+                                                        } break;
+                                                        case (nlohmann::json::value_t::number_float): { float _val = val;
+                                                                ImGui::InputFloat(label.c_str(), &_val, 0, 0, "%f"); val = _val;
+                                                        } break;
+                                                        case (nlohmann::json::value_t::number_integer): { int64_t _val = val;
+                                                                ImGui::InputScalar(label.c_str(), ImGuiDataType_S64, &_val); val = _val;
+                                                        } break;
+                                                        case (nlohmann::json::value_t::number_unsigned): { uint64_t _val = val;
+                                                                ImGui::InputScalar(label.c_str(), ImGuiDataType_U64, &_val); val = _val;
+                                                        } break;
+                                                        case (nlohmann::json::value_t::string): { std::string _val = val;
+                                                                ImGui::InputText(label.c_str(), &_val); val = _val;
+                                                        } break;
+                                                } ImGui::PopID(); _uid++; }
+                                        }
                                 } ImGui::End();
                         }
                 } ImGui::Render(); }
@@ -393,6 +394,5 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                         break;
                 }
         }
-        ImGui::SaveIniSettingsToDisk(IMGUI_CACHE_PATH.c_str());
         ImGui_ImplOpenGL3_Shutdown(); ImGui_ImplGlfw_Shutdown(); ImGui::DestroyContext();
 return 0; } catch (const std::exception& e) { std::cout << e.what() << std::endl; return 1; } }
