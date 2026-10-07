@@ -42,6 +42,12 @@ const int CAMERA_SENSITIVITY = 16;
 const int STARTING_CAMERA_MOVE_SPEED = 8;
 
 const std::string CONFIG_FILE = "GMap.json";
+const nlohmann::json DEFAULT_MAP_OBJECT = nlohmann::json::parse(R"({
+        "model": "",
+        "name": "",
+        "data": [],
+        "extra_data": {}
+})");
 
 int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(CONFIG_FILE)) throw std::runtime_error(CONFIG_FILE + " not found in current working directory");
         nlohmann::json config; std::ifstream(CONFIG_FILE) >> config; if (config.type() != nlohmann::json::value_t::array) throw std::runtime_error(CONFIG_FILE + " root is not an array");
@@ -50,96 +56,94 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
         GWindower gw{0, 0, 4, 6}; gw.locked_mouse = false; if (!gladLoadGL()) ERROR("Failed to load OpenGL functions");
 
         GRenderer3D gr3d;
-        auto LoadModel = [&](std::string model_path) -> std::tuple<uint64_t, gcollision2::AABB> { if (!std::filesystem::is_regular_file(model_path)) throw std::runtime_error(model_path + " not found");
-                GOBJ mesh_data(model_path);
-
-                uint64_t OUT_gr3d_mesh_id;
-                std::string texture_path = std::filesystem::path(model_path).replace_extension(".png");
-                if (std::filesystem::is_regular_file(texture_path)) {
-                        int texture_width, texture_height, _texture_comp;
-                        unsigned char* texture = stbi_load(texture_path.c_str(), &texture_width, &texture_height, &_texture_comp, 4); if (texture == NULL) throw std::runtime_error(std::string("The texture ") + texture_path + " for model " + model_path + " is corrupt/invalid (or an allocation failure happened)");
-                        OUT_gr3d_mesh_id = gr3d.CreateMesh(
-                                (GRenderer3D::Vertex*)mesh_data.vertices.data(), mesh_data.vertices.size(),
-                                (uint32_t*)mesh_data.indices.data(), mesh_data.indices.size(),
-                                (uint32_t*)texture, texture_width, texture_height
-                        );
-                        stbi_image_free(texture);
-                } else {
-                        static const uint32_t DEFAULT_TEXTURE[] = { 0xFFFFFFFF };
-                        OUT_gr3d_mesh_id = gr3d.CreateMesh(
-                                (GRenderer3D::Vertex*)mesh_data.vertices.data(), mesh_data.vertices.size(),
-                                (uint32_t*)mesh_data.indices.data(), mesh_data.indices.size(),
-                                DEFAULT_TEXTURE, 1, 1
-                        );
+        auto AddModel = [&](std::string model_path) -> std::tuple<GRenderer3D::MeshInstance*, gcollision2::AABB> { if (!std::filesystem::is_regular_file(model_path)) throw std::runtime_error(std::string("Model at path '") + model_path + "' not found");
+                struct LoadedModel {
+                        uint64_t gr3d_mesh_id;
+                        gcollision2::AABB aabb{{FLT_MAX, FLT_MAX, FLT_MAX}, {-FLT_MAX, -FLT_MAX, -FLT_MAX}};
+                };
+                static std::unordered_map<std::string, LoadedModel> loaded_models;
+                if (!loaded_models.contains(model_path)) {
+                        LoadedModel model;
+                        GOBJ mesh_data(model_path);
+                        std::string texture_path = std::filesystem::path(model_path).replace_extension(".png");
+                        if (std::filesystem::is_regular_file(texture_path)) {
+                                int texture_width, texture_height, _texture_comp;
+                                unsigned char* texture = stbi_load(texture_path.c_str(), &texture_width, &texture_height, &_texture_comp, 4); if (texture == NULL) throw std::runtime_error(std::string("The texture ") + texture_path + " for model " + model_path + " is corrupt/invalid (or an allocation failure happened)");
+                                model.gr3d_mesh_id = gr3d.CreateMesh(
+                                        (GRenderer3D::Vertex*)mesh_data.vertices.data(), mesh_data.vertices.size(),
+                                        (uint32_t*)mesh_data.indices.data(), mesh_data.indices.size(),
+                                        (uint32_t*)texture, texture_width, texture_height
+                                );
+                                stbi_image_free(texture);
+                        } else {
+                                static const uint32_t DEFAULT_TEXTURE[] = { 0xFFFFFFFF };
+                                model.gr3d_mesh_id = gr3d.CreateMesh(
+                                        (GRenderer3D::Vertex*)mesh_data.vertices.data(), mesh_data.vertices.size(),
+                                        (uint32_t*)mesh_data.indices.data(), mesh_data.indices.size(),
+                                        DEFAULT_TEXTURE, 1, 1
+                                );
+                        }
+                        for (const GOBJ::Vertex& vertex : mesh_data.vertices) {
+                                if (vertex.pos[0] < model.aabb.min.x) model.aabb.min.x = vertex.pos[0];
+                                else if (vertex.pos[0] > model.aabb.max.x) model.aabb.max.x = vertex.pos[0];
+                                if (vertex.pos[1] < model.aabb.min.y) model.aabb.min.y = vertex.pos[1];
+                                else if (vertex.pos[1] > model.aabb.max.y) model.aabb.max.y = vertex.pos[1];
+                                if (vertex.pos[2] < model.aabb.min.z) model.aabb.min.z = vertex.pos[2];
+                                else if (vertex.pos[2] > model.aabb.max.z) model.aabb.max.z = vertex.pos[2];
+                        }
+                        loaded_models[model_path] = model;
                 }
-
-                gcollision2::AABB OUT_aabb{{FLT_MAX, FLT_MAX, FLT_MAX}, {-FLT_MAX, -FLT_MAX, -FLT_MAX}};
-                for (const GOBJ::Vertex& vertex : mesh_data.vertices) {
-                        if (vertex.pos[0] < OUT_aabb.min.x) OUT_aabb.min.x = vertex.pos[0];
-                        else if (vertex.pos[0] > OUT_aabb.max.x) OUT_aabb.max.x = vertex.pos[0];
-                        if (vertex.pos[1] < OUT_aabb.min.y) OUT_aabb.min.y = vertex.pos[1];
-                        else if (vertex.pos[1] > OUT_aabb.max.y) OUT_aabb.max.y = vertex.pos[1];
-                        if (vertex.pos[2] < OUT_aabb.min.z) OUT_aabb.min.z = vertex.pos[2];
-                        else if (vertex.pos[2] > OUT_aabb.max.z) OUT_aabb.max.z = vertex.pos[2];
-                }
-
-                return {OUT_gr3d_mesh_id, OUT_aabb};
-        };
-        // auto AddModel_Runtime = [&](std::string model_path) -> GRenderer3D::MeshInstance* { model_path = std::filesystem::path(model_path).lexically_normal().generic_string();
-        //         static std::unordered_map<std::string, uint64_t> gr3d_runtime_mesh_ids;
-        //         if (!gr3d_runtime_mesh_ids.contains(model_path)) {
-        //                 gr3d_runtime_mesh_ids[model_path] = gr3d.CreateMesh(const Vertex *vertices, const size_t vertices_len, const uint32_t *indices, const size_t indices_len, const uint32_t *texture_RGBA, const uint16_t texture_width, const uint16_t texture_height)
-        //                 // TODO
-        //         }
-        //         return gr3d.AddMesh(gr3d_runtime_mesh_ids[model_path]);
-        // };
-
-        struct MapObject {
-                nlohmann::json config = nlohmann::json::parse(R"({
-                        "model": "",
-                        "name": "",
-                        "data": [],
-                        "extra_data": {}
-                })");
-                uint64_t gr3d_mesh_id;
-                gcollision2::AABB aabb;
+                return {
+                        gr3d.AddMesh(loaded_models[model_path].gr3d_mesh_id),
+                        loaded_models[model_path].aabb
+                };
         };
 
-        std::unordered_map<std::string, MapObject> registered_map_objects;
+        std::unordered_map<std::string, nlohmann::json> registered_map_objects;
         for (const auto& map_object : config) { if (!map_object.contains("model")) throw std::runtime_error(std::string("MapObject ") + std::string(map_object["name"]) + " is missing key " + R"("model")");
-                MapObject registration;
-                for (const auto& [key, _] : registration.config.items()) if (map_object.contains(key)) registration.config[key] = map_object[key];
-                if (!map_object.contains("name") || map_object["name"] == "") { registration.config["name"] = std::filesystem::path(map_object["model"]).stem().string(); } if (registered_map_objects.contains(registration.config["name"])) throw std::runtime_error(std::string("MapObject with name ") + std::string(registration.config["name"]) + " is already registered");
-                std::tie(
-                        registration.gr3d_mesh_id,
-                        registration.aabb
-                ) = LoadModel(registration.config["model"]);;
-                registered_map_objects[registration.config["name"]] = registration;
+                nlohmann::json registration;
+                for (const auto& [key, _] : DEFAULT_MAP_OBJECT.items()) {
+                        if (map_object.contains(key)) registration[key] = map_object[key];
+                        else registration[key] = DEFAULT_MAP_OBJECT[key];
+                }
+                if (!map_object.contains("name") || map_object["name"] == "") { registration["name"] = std::filesystem::path(map_object["model"]).stem().string(); } if (registered_map_objects.contains(registration["name"])) throw std::runtime_error(std::string("MapObject with name ") + std::string(registration["name"]) + " is already registered");
+                registered_map_objects[registration["name"]] = registration;
         }
 
         struct MapObjectInstance {  // Output: name, [pos], [rot], [scale], [color], [extra_data], [user_model]
                 uint64_t uid;
-                MapObject* base;  // ^ name
+                nlohmann::json* base;  // ^ name
                 GRenderer3D::MeshInstance* mesh_instance;  // ^ pos, rot, scale, color
+                gcollision2::AABB mesh_aabb;
                 nlohmann::json extra_data;  // ^ extra_data
                 std::string user_model = "";  // ^ user_model
         };
         std::vector<std::unique_ptr<MapObjectInstance>> map_object_instances;
         auto InstantiateMapObject = [&](
-                std::string base,
+                std::string name,
                 float pos_x = 0.0f, float pos_y = 0.0f, float pos_z = 0.0f,
                 float quat_x = 0.0f, float quat_y = 0.0f, float quat_z = 0.0f, float quat_w = 1.0f,
                 float scale_x = 1.0f, float scale_y = 1.0f, float scale_z = 1.0f,
                 uint32_t color_shift_RGBA = 0xFFFFFFFF,
                 std::string user_model_path = ""
-        ) -> MapObjectInstance* { if (!registered_map_objects.contains(base)) ERROR(base + " not found in registered map objects");
+        ) -> MapObjectInstance* { if (!registered_map_objects.contains(name)) ERROR(name + " not found in registered map objects");
                 static uint64_t _last_uid = 0;
                 MapObjectInstance* instance = map_object_instances.emplace_back(std::make_unique<MapObjectInstance>()).get();
                 instance->uid = _last_uid; _last_uid++;
-                instance->base = &registered_map_objects[base];
-                instance->extra_data = instance->base->config["extra_data"];
-                // TODO: user_model `if` branch
-                instance->mesh_instance = gr3d.AddMesh(instance->base->gr3d_mesh_id);
+                instance->base = &registered_map_objects[name];
+                instance->extra_data = (*instance->base)["extra_data"];
+                if (user_model_path == "") {
+                        std::tie(
+                                instance->mesh_instance,
+                                instance->mesh_aabb
+                        ) = AddModel((*instance->base)["model"]);
+                } else {
+                        std::tie(
+                                instance->mesh_instance,
+                                instance->mesh_aabb
+                        ) = AddModel(user_model_path);
+                        instance->user_model = user_model_path;
+                }
                 instance->mesh_instance->position[0] = pos_x; instance->mesh_instance->position[1] = pos_y; instance->mesh_instance->position[2] = pos_z;
                 instance->mesh_instance->rotation[0] = quat_x; instance->mesh_instance->rotation[1] = quat_y; instance->mesh_instance->rotation[2] = quat_z; instance->mesh_instance->rotation[3] = quat_w;
                 instance->mesh_instance->scale[0] = scale_x; instance->mesh_instance->scale[1] = scale_y; instance->mesh_instance->scale[2] = scale_z;
@@ -154,16 +158,16 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                         if (!registered_map_objects.contains(map_object_instance_json["name"])) throw std::runtime_error(std::string("Registered MapObject not found for object with name ") + std::string(map_object_instance_json["name"]) + " in " + argv[1]);
 
                         float pos_x = 0; float pos_y = 0; float pos_z = 0;
-                        if (std::find(registered_map_objects[map_object_instance_json["name"]].config["data"].begin(), registered_map_objects[map_object_instance_json["name"]].config["data"].end(),
-                                "position") != registered_map_objects[map_object_instance_json["name"]].config["data"].end()
+                        if (std::find(registered_map_objects[map_object_instance_json["name"]]["data"].begin(), registered_map_objects[map_object_instance_json["name"]]["data"].end(),
+                                "position") != registered_map_objects[map_object_instance_json["name"]]["data"].end()
                         ) {
                                 pos_x = map_object_instance_json["position"][0];
                                 pos_y = map_object_instance_json["position"][1];
                                 pos_z = map_object_instance_json["position"][2];
                         }
                         float rot_x = 0; float rot_y = 0; float rot_z = 0; float rot_w = 1;
-                        if (std::find(registered_map_objects[map_object_instance_json["name"]].config["data"].begin(), registered_map_objects[map_object_instance_json["name"]].config["data"].end(),
-                                "rotation") != registered_map_objects[map_object_instance_json["name"]].config["data"].end()
+                        if (std::find(registered_map_objects[map_object_instance_json["name"]]["data"].begin(), registered_map_objects[map_object_instance_json["name"]]["data"].end(),
+                                "rotation") != registered_map_objects[map_object_instance_json["name"]]["data"].end()
                         ) {
                                 rot_x = map_object_instance_json["rotation"][0];
                                 rot_y = map_object_instance_json["rotation"][1];
@@ -171,16 +175,16 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                                 rot_w = map_object_instance_json["rotation"][3];
                         }
                         float scale_x = 1.0; float scale_y = 1.0; float scale_z = 1.0;
-                        if (std::find(registered_map_objects[map_object_instance_json["name"]].config["data"].begin(), registered_map_objects[map_object_instance_json["name"]].config["data"].end(),
-                                "scale") != registered_map_objects[map_object_instance_json["name"]].config["data"].end()
+                        if (std::find(registered_map_objects[map_object_instance_json["name"]]["data"].begin(), registered_map_objects[map_object_instance_json["name"]]["data"].end(),
+                                "scale") != registered_map_objects[map_object_instance_json["name"]]["data"].end()
                         ) {
                                 scale_x = map_object_instance_json["scale"][0];
                                 scale_y = map_object_instance_json["scale"][1];
                                 scale_z = map_object_instance_json["scale"][2];
                         }
                         uint32_t color = 0xFFFFFFFF;
-                        if (std::find(registered_map_objects[map_object_instance_json["name"]].config["data"].begin(), registered_map_objects[map_object_instance_json["name"]].config["data"].end(),
-                                "color") != registered_map_objects[map_object_instance_json["name"]].config["data"].end()
+                        if (std::find(registered_map_objects[map_object_instance_json["name"]]["data"].begin(), registered_map_objects[map_object_instance_json["name"]]["data"].end(),
+                                "color") != registered_map_objects[map_object_instance_json["name"]]["data"].end()
                         ) { color = map_object_instance_json["color"]; }
 
                         MapObjectInstance* map_object_instance = InstantiateMapObject(
@@ -190,7 +194,7 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                                 scale_x, scale_y, scale_z,
                                 color // TODO: + user_model_path
                         );
-                        if (registered_map_objects[map_object_instance_json["name"]].config["extra_data"].size() > 0) map_object_instance->extra_data = map_object_instance_json["extra_data"];
+                        if (registered_map_objects[map_object_instance_json["name"]]["extra_data"].size() > 0) map_object_instance->extra_data = map_object_instance_json["extra_data"];
                 }
         }
 
@@ -248,14 +252,14 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                                                 )
                                         );
                                         float3 map_object_instance_aabb_cuboid[8]{
-                                                {map_object_instance->base->aabb.min.x, map_object_instance->base->aabb.min.y, map_object_instance->base->aabb.min.z},
-                                                {map_object_instance->base->aabb.min.x, map_object_instance->base->aabb.min.y, map_object_instance->base->aabb.max.z},
-                                                {map_object_instance->base->aabb.min.x, map_object_instance->base->aabb.max.y, map_object_instance->base->aabb.min.z},
-                                                {map_object_instance->base->aabb.min.x, map_object_instance->base->aabb.max.y, map_object_instance->base->aabb.max.z},
-                                                {map_object_instance->base->aabb.max.x, map_object_instance->base->aabb.min.y, map_object_instance->base->aabb.min.z},
-                                                {map_object_instance->base->aabb.max.x, map_object_instance->base->aabb.min.y, map_object_instance->base->aabb.max.z},
-                                                {map_object_instance->base->aabb.max.x, map_object_instance->base->aabb.max.y, map_object_instance->base->aabb.min.z},
-                                                {map_object_instance->base->aabb.max.x, map_object_instance->base->aabb.max.y, map_object_instance->base->aabb.max.z}
+                                                {map_object_instance->mesh_aabb.min.x, map_object_instance->mesh_aabb.min.y, map_object_instance->mesh_aabb.min.z},
+                                                {map_object_instance->mesh_aabb.min.x, map_object_instance->mesh_aabb.min.y, map_object_instance->mesh_aabb.max.z},
+                                                {map_object_instance->mesh_aabb.min.x, map_object_instance->mesh_aabb.max.y, map_object_instance->mesh_aabb.min.z},
+                                                {map_object_instance->mesh_aabb.min.x, map_object_instance->mesh_aabb.max.y, map_object_instance->mesh_aabb.max.z},
+                                                {map_object_instance->mesh_aabb.max.x, map_object_instance->mesh_aabb.min.y, map_object_instance->mesh_aabb.min.z},
+                                                {map_object_instance->mesh_aabb.max.x, map_object_instance->mesh_aabb.min.y, map_object_instance->mesh_aabb.max.z},
+                                                {map_object_instance->mesh_aabb.max.x, map_object_instance->mesh_aabb.max.y, map_object_instance->mesh_aabb.min.z},
+                                                {map_object_instance->mesh_aabb.max.x, map_object_instance->mesh_aabb.max.y, map_object_instance->mesh_aabb.max.z}
                                         };
                                         for (float3& vertex : map_object_instance_aabb_cuboid) vertex = linalg::mul(map_object_instance_transform, float4{vertex, 1.0f}).xyz();
                                         gcollision2::AABB map_object_instance_aabb{{FLT_MAX, FLT_MAX, FLT_MAX}, {-FLT_MAX, -FLT_MAX, -FLT_MAX}};
@@ -285,11 +289,12 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                 static bool _cloned = false;
                 if (gw.key_states[GWindower::KEY_LEFT_ALT] && gw.key_states[GWindower::KEY_D] && selected_map_object != nullptr && !_cloned) { _cloned = true;
                         MapObjectInstance* clone = InstantiateMapObject(
-                                selected_map_object->base->config["name"],
+                                (*selected_map_object->base)["name"],
                                 selected_map_object->mesh_instance->position[0], selected_map_object->mesh_instance->position[1], selected_map_object->mesh_instance->position[2],
                                 selected_map_object->mesh_instance->rotation[0], selected_map_object->mesh_instance->rotation[1], selected_map_object->mesh_instance->rotation[2], selected_map_object->mesh_instance->rotation[3],
                                 selected_map_object->mesh_instance->scale[0], selected_map_object->mesh_instance->scale[1], selected_map_object->mesh_instance->scale[2],
-                                selected_map_object->mesh_instance->color_RGBA // TODO: + user_model_path
+                                selected_map_object->mesh_instance->color_RGBA,
+                                selected_map_object->user_model
                         );
                         clone->extra_data = selected_map_object->extra_data;
                         selected_map_object = clone;
@@ -322,11 +327,11 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                         if (selected_map_object != nullptr) {
                                 ImGui::SetNextWindowPos({0.0f, 0.0f}, ImGuiCond_Always, {0.0f, 0.0f});
                                 ImGui::Begin("INSPECTOR", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
-                                        if (std::find(selected_map_object->base->config["data"].begin(), selected_map_object->base->config["data"].end(),
-                                                "position") != selected_map_object->base->config["data"].end()
+                                        if (std::find((*selected_map_object->base)["data"].begin(), (*selected_map_object->base)["data"].end(),
+                                                "position") != (*selected_map_object->base)["data"].end()
                                         ) ImGui::DragFloat3("POSITION", selected_map_object->mesh_instance->position);
-                                        if (std::find(selected_map_object->base->config["data"].begin(), selected_map_object->base->config["data"].end(),
-                                                "rotation") != selected_map_object->base->config["data"].end()
+                                        if (std::find((*selected_map_object->base)["data"].begin(), (*selected_map_object->base)["data"].end(),
+                                                "rotation") != (*selected_map_object->base)["data"].end()
                                         ) {
                                                 float rot_euler[3] = {
                                                         atan2(2*(selected_map_object->mesh_instance->rotation[3]*selected_map_object->mesh_instance->rotation[0] + selected_map_object->mesh_instance->rotation[1]*selected_map_object->mesh_instance->rotation[2]), 1 - 2*(selected_map_object->mesh_instance->rotation[0]*selected_map_object->mesh_instance->rotation[0] + selected_map_object->mesh_instance->rotation[1]*selected_map_object->mesh_instance->rotation[1])) * (float)(180/M_PI),
@@ -344,11 +349,11 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                                                         selected_map_object->mesh_instance->rotation[0] = rot_quat.x; selected_map_object->mesh_instance->rotation[1] = rot_quat.y; selected_map_object->mesh_instance->rotation[2] = rot_quat.z; selected_map_object->mesh_instance->rotation[3] = rot_quat.w;
                                                 }
                                         }
-                                        if (std::find(selected_map_object->base->config["data"].begin(), selected_map_object->base->config["data"].end(),
-                                                "scale") != selected_map_object->base->config["data"].end()
+                                        if (std::find((*selected_map_object->base)["data"].begin(), (*selected_map_object->base)["data"].end(),
+                                                "scale") != (*selected_map_object->base)["data"].end()
                                         ) ImGui::DragFloat3("SCALE", selected_map_object->mesh_instance->scale);
-                                        if (std::find(selected_map_object->base->config["data"].begin(), selected_map_object->base->config["data"].end(),
-                                                "color") != selected_map_object->base->config["data"].end()
+                                        if (std::find((*selected_map_object->base)["data"].begin(), (*selected_map_object->base)["data"].end(),
+                                                "color") != (*selected_map_object->base)["data"].end()
                                         ) {
                                                 ImVec4 color = ImGui::ColorConvertU32ToFloat4(selected_map_object->mesh_instance->color_RGBA);
                                                 float _temp;
@@ -399,18 +404,18 @@ int main(int argc, char* argv[]) { try { if (!std::filesystem::is_regular_file(C
                         nlohmann::json output = nlohmann::json::array();
                         for (const auto& map_object_instance : map_object_instances) {
                                 nlohmann::json map_object_instance_json = nlohmann::json::object();
-                                map_object_instance_json["name"] = map_object_instance->base->config["name"];
-                                if (std::find(map_object_instance->base->config["data"].begin(), map_object_instance->base->config["data"].end(),
-                                        "position") != map_object_instance->base->config["data"].end()
+                                map_object_instance_json["name"] = (*selected_map_object->base)["name"];
+                                if (std::find((*selected_map_object->base)["data"].begin(), (*selected_map_object->base)["data"].end(),
+                                        "position") != (*selected_map_object->base)["data"].end()
                                 ) map_object_instance_json["position"] = nlohmann::json::array({map_object_instance->mesh_instance->position[0], map_object_instance->mesh_instance->position[1], map_object_instance->mesh_instance->position[2]});
-                                if (std::find(map_object_instance->base->config["data"].begin(), map_object_instance->base->config["data"].end(),
-                                        "rotation") != map_object_instance->base->config["data"].end()
+                                if (std::find((*selected_map_object->base)["data"].begin(), (*selected_map_object->base)["data"].end(),
+                                        "rotation") != (*selected_map_object->base)["data"].end()
                                 ) map_object_instance_json["rotation"] = nlohmann::json::array({map_object_instance->mesh_instance->rotation[0], map_object_instance->mesh_instance->rotation[1], map_object_instance->mesh_instance->rotation[2], map_object_instance->mesh_instance->rotation[3]});
-                                if (std::find(map_object_instance->base->config["data"].begin(), map_object_instance->base->config["data"].end(),
-                                        "scale") != map_object_instance->base->config["data"].end()
+                                if (std::find((*selected_map_object->base)["data"].begin(), (*selected_map_object->base)["data"].end(),
+                                        "scale") != (*selected_map_object->base)["data"].end()
                                 ) map_object_instance_json["scale"] = nlohmann::json::array({map_object_instance->mesh_instance->scale[0], map_object_instance->mesh_instance->scale[1], map_object_instance->mesh_instance->scale[2]});
-                                if (std::find(map_object_instance->base->config["data"].begin(), map_object_instance->base->config["data"].end(),
-                                        "color") != map_object_instance->base->config["data"].end()
+                                if (std::find((*selected_map_object->base)["data"].begin(), (*selected_map_object->base)["data"].end(),
+                                        "color") != (*selected_map_object->base)["data"].end()
                                 ) { map_object_instance_json["color"] = map_object_instance->mesh_instance->color_RGBA; }
                                 if (map_object_instance->extra_data.size() > 0) { map_object_instance_json["extra_data"] = map_object_instance->extra_data; }
                                 // TODO: + user_model
