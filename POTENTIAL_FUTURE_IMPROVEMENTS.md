@@ -1,4 +1,2 @@
 - More of a map/handle -type system for stuff instead of traversing arrays one-by-one
 - Optional realtime dynamic light & shadow support
-- Other types for `data`?
-- Optional CSG?
