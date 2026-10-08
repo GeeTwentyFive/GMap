@@ -224,5 +224,40 @@ int main(int argc, char* argv[]) { try {
                 };
         };
 
-        // TODO
+        if (argc > 1) { if (!std::filesystem::is_regular_file(argv[1])) throw std::runtime_error(std::string("CLI-provided file '") + argv[1] + "' not found or not regular file");
+                nlohmann::json input = nlohmann::json::parse(std::ifstream(argv[1])); if (!input.is_array()) throw std::runtime_error(std::string("'") + argv[1] + "' root is not a JSON array");
+                for (const nlohmann::json& map_object_instance_json : input) MapObjectInstance::CreateFromJSON(map_object_instance_json);
+        }
+
+        ImGui::CreateContext(); ImGui_ImplGlfw_InitForOpenGL((GLFWwindow*)(gw._glfwWindow), true); ImGui_ImplOpenGL3_Init("#version 460 core"); ImGui::GetIO().ConfigFlags |= (ImGuiConfigFlags_NoMouseCursorChange); ImGui::GetIO().IniFilename = NULL;
+
+        GRenderer2D gr2d;
+
+        static const uint32_t CROSSHAIR_TEXTURE[] = {
+                0x00000000, 0xFF000000, 0xFF000000, 0xFF000000, 0x00000000,
+                0xFF000000, 0xFF000000, 0xFFFFFFFF, 0xFF000000, 0xFF000000,
+                0xFF000000, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFF000000,
+                0xFF000000, 0xFF000000, 0xFFFFFFFF, 0xFF000000, 0xFF000000,
+                0x00000000, 0xFF000000, 0xFF000000, 0xFF000000, 0x00000000
+        };
+        GRenderer2D::SpriteInstance* crosshair_sprite = gr2d.AddSprite(gr2d.CreateSprite(CROSSHAIR_TEXTURE, 5, 5)); crosshair_sprite->z_depth = -0.99f;
+
+        auto GetMeshAABBFromFile = [](std::string mesh_path) -> gcollision2::AABB* {
+                // TODO
+        };
+
+        MapObjectInstance* selected_map_object = nullptr;
+
+        glClearColor(0.0, 0.0, 0.0, 1.0);
+        GFramePacer gfp; gfp.target_frametime_ms = 1.0;  // (frame limiting itself not needed because using v-sync (and wait-until-input), using lib for other frame-pacing-related benefits)
+        while (gw.Update(true, 0.1, true)) {
+                double delta_time = gfp.Wait();
+
+                if (gw.mouse_button_states[GWindower::MOUSEBUTTON_RIGHT]) { if (gw.locked_mouse == false) { gw.locked_mouse = true; gw.mouse_x = gw.window_width/2; gw.mouse_y = gw.window_height/2; }
+                        // TODO
+                }
+
+                // TODO
+        }
+        ImGui_ImplOpenGL3_Shutdown(); ImGui_ImplGlfw_Shutdown(); ImGui::DestroyContext();
 return 0; } catch (const std::exception& e) { std::cout << e.what() << std::endl; return 1; } }
