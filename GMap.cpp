@@ -93,6 +93,23 @@ int main(int argc, char* argv[]) { try {
                 return gr3d.AddMesh(gr3d_mesh_ids[mesh_path+'\0'+texture_path]);
         };
 
+        static auto GetMeshAABBFromFile = [&](std::string mesh_path) -> gcollision2::AABB* {
+                static std::unordered_map<std::string, gcollision2::AABB> calculated_aabbs;
+                if (!calculated_aabbs.contains(mesh_path)) {
+                        gcollision2::AABB aabb{{FLT_MAX, FLT_MAX, FLT_MAX}, {-FLT_MAX, -FLT_MAX, -FLT_MAX}};
+                        for (const GOBJ::Vertex& vertex : GetMeshDataFromFile(mesh_path)->vertices) {
+                                if (vertex.pos[0] < aabb.min.x) aabb.min.x = vertex.pos[0];
+                                else if (vertex.pos[0] > aabb.max.x) aabb.max.x = vertex.pos[0];
+                                if (vertex.pos[1] < aabb.min.y) aabb.min.y = vertex.pos[1];
+                                else if (vertex.pos[1] > aabb.max.y) aabb.max.y = vertex.pos[1];
+                                if (vertex.pos[2] < aabb.min.z) aabb.min.z = vertex.pos[2];
+                                else if (vertex.pos[2] > aabb.max.z) aabb.max.z = vertex.pos[2];
+                        }
+                        calculated_aabbs[mesh_path] = aabb;
+                }
+                return &calculated_aabbs[mesh_path];
+        };
+
         static auto ValueInJSONArray = [](nlohmann::json value, nlohmann::json array) -> bool { return (std::find(array.begin(), array.end(), value) != array.end()); };
 
         struct MapObjectInstance;
@@ -151,6 +168,44 @@ int main(int argc, char* argv[]) { try {
                 }
                 std::string GetUserModel() { return user_model; }
                 std::string GetUserTexture() { return user_texture; }
+
+                float4x4 Transform() {
+                        return linalg::mul(
+                                linalg::translation_matrix(float3{mesh_instance->position[0], mesh_instance->position[1], mesh_instance->position[2]}),
+                                linalg::mul(
+                                        linalg::rotation_matrix(float4{mesh_instance->rotation[0], mesh_instance->rotation[1], mesh_instance->rotation[2], mesh_instance->rotation[3]}),
+                                        linalg::scaling_matrix(float3{mesh_instance->scale[0], mesh_instance->scale[1], mesh_instance->scale[2]})
+                                )
+                        );
+                }
+
+                gcollision2::AABB AABB() {
+                        gcollision2::AABB aabb{{FLT_MAX, FLT_MAX, FLT_MAX}, {-FLT_MAX, -FLT_MAX, -FLT_MAX}};
+                        gcollision2::AABB* mesh_aabb;
+                        if (user_model != "") mesh_aabb = GetMeshAABBFromFile(user_model);
+                        else mesh_aabb = GetMeshAABBFromFile((*base_registration)["model"]);
+                        float3 mesh_aabb_cuboid[8]{
+                                {mesh_aabb->min.x, mesh_aabb->min.y, mesh_aabb->min.z},
+                                {mesh_aabb->min.x, mesh_aabb->min.y, mesh_aabb->max.z},
+                                {mesh_aabb->min.x, mesh_aabb->max.y, mesh_aabb->min.z},
+                                {mesh_aabb->min.x, mesh_aabb->max.y, mesh_aabb->max.z},
+                                {mesh_aabb->max.x, mesh_aabb->min.y, mesh_aabb->min.z},
+                                {mesh_aabb->max.x, mesh_aabb->min.y, mesh_aabb->max.z},
+                                {mesh_aabb->max.x, mesh_aabb->max.y, mesh_aabb->min.z},
+                                {mesh_aabb->max.x, mesh_aabb->max.y, mesh_aabb->max.z}
+                        };
+                        float4x4 transform = Transform();
+                        for (float3& vertex : mesh_aabb_cuboid) vertex = linalg::mul(transform, float4{vertex, 1.0f}).xyz();
+                        for (const float3& vertex : mesh_aabb_cuboid) {
+                                if (vertex.x < aabb.min.x) aabb.min.x = vertex.x;
+                                else if (vertex.x > aabb.max.x) aabb.max.x = vertex.x;
+                                if (vertex.y < aabb.min.y) aabb.min.y = vertex.y;
+                                else if (vertex.y > aabb.max.y) aabb.max.y = vertex.y;
+                                if (vertex.z < aabb.min.z) aabb.min.z = vertex.z;
+                                else if (vertex.z > aabb.max.z) aabb.max.z = vertex.z;
+                        }
+                        return aabb;
+                }
 
                 MapObjectInstance* Clone() {
                         return Create(
@@ -267,23 +322,6 @@ int main(int argc, char* argv[]) { try {
         };
         GRenderer2D::SpriteInstance* crosshair_sprite = gr2d.AddSprite(gr2d.CreateSprite(CROSSHAIR_TEXTURE, 5, 5)); crosshair_sprite->z_depth = -0.99f;
 
-        auto GetMeshAABBFromFile = [&](std::string mesh_path) -> gcollision2::AABB* {
-                static std::unordered_map<std::string, gcollision2::AABB> calculated_aabbs;
-                if (!calculated_aabbs.contains(mesh_path)) {
-                        gcollision2::AABB aabb{{FLT_MAX, FLT_MAX, FLT_MAX}, {-FLT_MAX, -FLT_MAX, -FLT_MAX}};
-                        for (const GOBJ::Vertex& vertex : GetMeshDataFromFile(mesh_path)->vertices) {
-                                if (vertex.pos[0] < aabb.min.x) aabb.min.x = vertex.pos[0];
-                                else if (vertex.pos[0] > aabb.max.x) aabb.max.x = vertex.pos[0];
-                                if (vertex.pos[1] < aabb.min.y) aabb.min.y = vertex.pos[1];
-                                else if (vertex.pos[1] > aabb.max.y) aabb.max.y = vertex.pos[1];
-                                if (vertex.pos[2] < aabb.min.z) aabb.min.z = vertex.pos[2];
-                                else if (vertex.pos[2] > aabb.max.z) aabb.max.z = vertex.pos[2];
-                        }
-                        calculated_aabbs[mesh_path] = aabb;
-                }
-                return &calculated_aabbs[mesh_path];
-        };
-
         MapObjectInstance* selected_map_object = nullptr;
 
         glClearColor(0.0, 0.0, 0.0, 1.0);
@@ -292,10 +330,75 @@ int main(int argc, char* argv[]) { try {
                 double delta_time = gfp.Wait();
 
                 if (gw.mouse_button_states[GWindower::MOUSEBUTTON_RIGHT]) { if (gw.locked_mouse == false) { gw.locked_mouse = true; gw.mouse_x = gw.window_width/2; gw.mouse_y = gw.window_height/2; }
-                        // TODO
+                        gr3d.camera_yaw += gw.mouse_x * CAMERA_SENSITIVITY;
+                        gr3d.camera_pitch += gw.mouse_y * CAMERA_SENSITIVITY;
+                        static int camera_move_speed = STARTING_CAMERA_MOVE_SPEED;
+                        if (gw.mouse_scroll_delta > 0.5 || gw.key_states[GWindower::KEY_UP]) camera_move_speed *= 2;
+                        if (gw.mouse_scroll_delta < -0.5 || gw.key_states[GWindower::KEY_DOWN]) camera_move_speed /= 2;
+                        if (camera_move_speed < 1) camera_move_speed = 1;
+                        gr3d.camera_pos[1] += (-gw.key_states[GWindower::KEY_LEFT_CONTROL] + gw.key_states[GWindower::KEY_SPACE]) * camera_move_speed * delta_time;
+                        float2 move_dir = float2{
+                                (float)(-gw.key_states[GWindower::KEY_A] + gw.key_states[GWindower::KEY_D]),
+                                (float)(-gw.key_states[GWindower::KEY_W] + gw.key_states[GWindower::KEY_S])
+                        };
+                        if (linalg::length2(move_dir) != 0) move_dir = linalg::normalize(move_dir);
+                        move_dir = linalg::rot((float)(gr3d.camera_yaw*(2*M_PI/65536)), move_dir);
+                        gr3d.camera_pos[0] += -move_dir.x * camera_move_speed * delta_time;
+                        gr3d.camera_pos[2] += -move_dir.y * camera_move_speed * delta_time;
+
+                        if (gw.key_states[GWindower::KEY_ZERO]) { gr3d.camera_pos[0] = 0; gr3d.camera_pos[1] = 0; gr3d.camera_pos[2] = 0; }
+
+                        static bool _obj_pick_ray_casted = false;
+                        if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !_obj_pick_ray_casted) { _obj_pick_ray_casted = true;
+                                float3 ray_dir{
+                                        cosf((gr3d.camera_yaw*(2*M_PI/65536))-M_PI/2) * cosf(gr3d.camera_pitch*(2*M_PI/65536)),
+                                        sinf(gr3d.camera_pitch*(2*M_PI/65536)),
+                                        sinf((gr3d.camera_yaw*(2*M_PI/65536))-M_PI/2) * cosf(gr3d.camera_pitch*(2*M_PI/65536))
+                                };
+                                float closest_hit_map_object_distance = FLT_MAX;
+                                for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) {
+                                        gcollision2::AABB map_object_instance_aabb = map_object_instance->AABB();
+                                        if (map_object_instance_aabb.ContainsPoint(float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]})) continue;  // (skip if camera is inside of obj (to make it so you can select objs inside of other objs))
+                                        gcollision2::RayHitExtraInfo extra_hit_info;
+                                        if (gcollision2::IntersectRayAABB(
+                                                float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]},
+                                                ray_dir,
+                                                map_object_instance_aabb,
+                                                &extra_hit_info
+                                        )) if (extra_hit_info.distance < closest_hit_map_object_distance) { closest_hit_map_object_distance = extra_hit_info.distance;
+                                                selected_map_object = map_object_instance.get();
+                                        }
+                                }
+                                if (closest_hit_map_object_distance == FLT_MAX) selected_map_object = nullptr;  // (none hit; deselect)
+                        } else if (!gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT]) _obj_pick_ray_casted = false;
+                } else gw.locked_mouse = false;
+
+                static bool _cloned = false;
+                if (gw.key_states[GWindower::KEY_LEFT_ALT] && gw.key_states[GWindower::KEY_D] && selected_map_object != nullptr && !_cloned) { _cloned = true;
+                        selected_map_object = selected_map_object->Clone();
+                } else if (!gw.key_states[GWindower::KEY_D]) _cloned = false;
+
+                if (gw.key_states[GWindower::KEY_DELETE] && selected_map_object != nullptr) {
+                        selected_map_object->Delete();
+                        selected_map_object = nullptr;
                 }
 
+                static bool show_ui = true;
+
+                //
+
                 // TODO
+
+
+                if(gw.key_states[GWindower::KEY_ESCAPE]) {
+                        nlohmann::json output = nlohmann::json::array();
+                        for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) {
+                                output.push_back(map_object_instance->SerializeToJSON());
+                        }
+                        std::cout << std::setw(4) << output << std::endl;
+
+                        break;
+                }
         }
         ImGui_ImplOpenGL3_Shutdown(); ImGui_ImplGlfw_Shutdown(); ImGui::DestroyContext();
 return 0; } catch (const std::exception& e) { std::cout << e.what() << std::endl; return 1; } }
