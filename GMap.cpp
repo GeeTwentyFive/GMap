@@ -56,6 +56,9 @@ int main(int argc, char* argv[]) { try {
                 map_object_registrations[registration["model"]] = registration;
         }
 
+        GWindower gw{0, 0, 4, 6}; gw.locked_mouse = false;
+        if (!gladLoadGL()) ERROR("Failed to load OpenGL functions");
+
         auto GetMesh = [](std::string mesh_path) -> GOBJ* {
                 static std::unordered_map<std::string, GOBJ> loaded_meshes;
                 if (!loaded_meshes.contains(mesh_path)) loaded_meshes[mesh_path] = GOBJ(mesh_path);
@@ -67,6 +70,16 @@ int main(int argc, char* argv[]) { try {
                 static std::unordered_map<std::string, Image> loaded_images;
                 if (!loaded_images.contains(image_path)) loaded_images[image_path].pixels_RGBA = stbi_load(image_path.c_str(), &loaded_images[image_path].width, &loaded_images[image_path].height, &_, 4); if (loaded_images[image_path].pixels_RGBA == NULL) throw std::runtime_error(std::string("Image '") + image_path + "' is corrupt/invalid (or an allocation failure happened)");
                 return &loaded_images[image_path];
+        };
+
+        GRenderer3D gr3d;
+
+        auto AddMesh = [&](std::string mesh_path, std::string texture_path = "") -> GRenderer3D::MeshInstance* {
+                static std::unordered_map<std::string, uint64_t> gr3d_mesh_ids;
+                if (!gr3d_mesh_ids.contains()) {
+                        // TODO
+                }
+                return &gr3d_mesh_ids[]; // TODO
         };
 
         // TODO
