@@ -132,7 +132,7 @@ int main(int argc, char* argv[]) { try {
                         return instance;
                 };
 
-                void SetUserModelAndOrTexture(std::string model_path = "", std::string texture_path = "") {
+                void SetUserModelAndOrTexture(std::string model_path = "", std::string texture_path = "") { if (model_path == "" && texture_path == "") return;
                         if (model_path == "") {
                                 if (user_model != "") model_path = user_model;
                                 else model_path = (*base_registration)["model"];
@@ -149,6 +149,8 @@ int main(int argc, char* argv[]) { try {
                         mesh_instance->color_RGBA = previous_mesh_instance->color_RGBA;
                         previous_mesh_instance->Remove();
                 }
+                std::string GetUserModel() { return user_model; }
+                std::string GetUserTexture() { return user_texture; }
 
                 MapObjectInstance* Clone() {
                         return Create(
