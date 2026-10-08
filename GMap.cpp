@@ -77,7 +77,7 @@ int main(int argc, char* argv[]) { try {
                 if (!gr3d_mesh_ids.contains(mesh_path+'\0'+texture_path)) {
                         GOBJ* mesh_data = GetMeshDataFromFile(mesh_path);
                         uint32_t* texture; int texture_width; int texture_height;
-                        if (texture_path != "") {
+                        if (texture_path != "" && std::filesystem::is_regular_file(texture_path)) {
                                 Image* texture_image = GetImageDataFromFile(texture_path);
                                 texture = (uint32_t*)texture_image->pixels_RGBA; texture_width = texture_image->width; texture_height = texture_image->height;
                         } else {
@@ -100,9 +100,12 @@ int main(int argc, char* argv[]) { try {
         struct MapObjectInstance {
                 nlohmann::json* base_registration;
                 GRenderer3D::MeshInstance* mesh_instance;
+                nlohmann::json extra_data = nlohmann::json::object();
+                private:
                 std::string user_model = "";
                 std::string user_texture = "";
-                nlohmann::json extra_data = nlohmann::json::object();
+
+                public:
 
                 static MapObjectInstance* Create(
                         std::string model,
@@ -114,7 +117,7 @@ int main(int argc, char* argv[]) { try {
                         std::string user_texture = "",
                         nlohmann::json extra_data = nlohmann::json::object()
                 ) { if (!map_object_registrations.contains(model)) throw std::runtime_error(std::string("No registered MapObject found with model '") + model + "'");
-                        MapObjectInstance* instance = map_object_instances.emplace_back(std::make_unique<MapObjectInstance>()).get();
+                        MapObjectInstance* instance = map_object_instances.emplace_back(std::unique_ptr<MapObjectInstance>(new MapObjectInstance())).get();
                         instance->base_registration = &map_object_registrations[model];
                         std::string model_path = (user_model != "") ? user_model : model;
                         std::string texture_path = (user_texture != "") ? user_texture : std::filesystem::path(model_path).replace_extension(".png").string();
@@ -128,6 +131,24 @@ int main(int argc, char* argv[]) { try {
                         instance->extra_data = extra_data;
                         return instance;
                 };
+
+                void SetUserModelAndOrTexture(std::string model_path = "", std::string texture_path = "") {
+                        if (model_path == "") {
+                                if (user_model != "") model_path = user_model;
+                                else model_path = (*base_registration)["model"];
+                        } else user_model = model_path;
+                        if (texture_path == "") {
+                                if (user_texture != "") texture_path = user_texture;
+                                else texture_path = std::filesystem::path(model_path).replace_extension(".png").string();
+                        } else user_texture = texture_path;
+                        GRenderer3D::MeshInstance* previous_mesh_instance = mesh_instance;
+                        mesh_instance = AddMesh(model_path, texture_path);
+                        mesh_instance->position[0] = previous_mesh_instance->position[0]; mesh_instance->position[1] = previous_mesh_instance->position[1]; mesh_instance->position[2] = previous_mesh_instance->position[2];
+                        mesh_instance->rotation[0] = previous_mesh_instance->rotation[0]; mesh_instance->rotation[1] = previous_mesh_instance->rotation[1]; mesh_instance->rotation[2] = previous_mesh_instance->rotation[2]; mesh_instance->rotation[3] = previous_mesh_instance->rotation[3];
+                        mesh_instance->scale[0] = previous_mesh_instance->scale[0]; mesh_instance->scale[1] = previous_mesh_instance->scale[1]; mesh_instance->scale[2] = previous_mesh_instance->scale[2];
+                        mesh_instance->color_RGBA = previous_mesh_instance->color_RGBA;
+                        previous_mesh_instance->Remove();
+                }
 
                 MapObjectInstance* Clone() {
                         return Create(
@@ -222,6 +243,8 @@ int main(int argc, char* argv[]) { try {
                                 extra_data
                         );
                 };
+
+                private: MapObjectInstance(){};
         };
 
         if (argc > 1) { if (!std::filesystem::is_regular_file(argv[1])) throw std::runtime_error(std::string("CLI-provided file '") + argv[1] + "' not found or not regular file");
@@ -242,8 +265,21 @@ int main(int argc, char* argv[]) { try {
         };
         GRenderer2D::SpriteInstance* crosshair_sprite = gr2d.AddSprite(gr2d.CreateSprite(CROSSHAIR_TEXTURE, 5, 5)); crosshair_sprite->z_depth = -0.99f;
 
-        auto GetMeshAABBFromFile = [](std::string mesh_path) -> gcollision2::AABB* {
-                // TODO
+        auto GetMeshAABBFromFile = [&](std::string mesh_path) -> gcollision2::AABB* {
+                static std::unordered_map<std::string, gcollision2::AABB> calculated_aabbs;
+                if (!calculated_aabbs.contains(mesh_path)) {
+                        gcollision2::AABB aabb{{FLT_MAX, FLT_MAX, FLT_MAX}, {-FLT_MAX, -FLT_MAX, -FLT_MAX}};
+                        for (const GOBJ::Vertex& vertex : GetMeshDataFromFile(mesh_path)->vertices) {
+                                if (vertex.pos[0] < aabb.min.x) aabb.min.x = vertex.pos[0];
+                                else if (vertex.pos[0] > aabb.max.x) aabb.max.x = vertex.pos[0];
+                                if (vertex.pos[1] < aabb.min.y) aabb.min.y = vertex.pos[1];
+                                else if (vertex.pos[1] > aabb.max.y) aabb.max.y = vertex.pos[1];
+                                if (vertex.pos[2] < aabb.min.z) aabb.min.z = vertex.pos[2];
+                                else if (vertex.pos[2] > aabb.max.z) aabb.max.z = vertex.pos[2];
+                        }
+                        calculated_aabbs[mesh_path] = aabb;
+                }
+                return &calculated_aabbs[mesh_path];
         };
 
         MapObjectInstance* selected_map_object = nullptr;
