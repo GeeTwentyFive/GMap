@@ -385,9 +385,24 @@ int main(int argc, char* argv[]) { try {
 
                 static bool show_ui = true;
 
-                //
+                static bool _show_ui_toggled = false;
+                if (gw.key_states[GWindower::KEY_LEFT_ALT] && gw.key_states[GWindower::KEY_H] && !_show_ui_toggled) { _show_ui_toggled = true; show_ui = !show_ui; }
+                else if (!gw.key_states[GWindower::KEY_H]) _show_ui_toggled = false;
 
-                // TODO
+                if (show_ui) {
+                        // TODO: GUI
+                }
+
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); glViewport(0, 0, gw.window_width, gw.window_height);  // (leaving this inside of the mainloop in case I want to support windowed operation in the future)
+                gr3d.DrawFrame(gw.window_width, gw.window_height);
+                if (show_ui) {
+                        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+                        glClear(GL_DEPTH_BUFFER_BIT);
+                        crosshair_sprite->size[0] = gw.window_height/180.0; crosshair_sprite->size[1] = gw.window_height/180.0;
+                        crosshair_sprite->position[0] = (gw.window_width/2.0 - crosshair_sprite->size[0]/2.0); crosshair_sprite->position[1] = (gw.window_height/2.0 - crosshair_sprite->size[1]/2.0);
+                        gr2d.DrawFrame(gw.window_width, gw.window_height);
+                }
+
 
 
                 if(gw.key_states[GWindower::KEY_ESCAPE]) {
