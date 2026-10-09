@@ -230,21 +230,58 @@ int main(int argc, char* argv[]) { try {
                 void DrawInspectorContents() {
                         if (ValueInJSONArray("position", (*base_registration)["data"])) ImGui::DragFloat3("POSITION", mesh_instance->position);
                         if (ValueInJSONArray("rotation", (*base_registration)["data"])) {
-                                // TODO
+                                float rot_euler[3] = {
+                                        atan2(2*(mesh_instance->rotation[3]*mesh_instance->rotation[0] + mesh_instance->rotation[1]*mesh_instance->rotation[2]), 1 - 2*(mesh_instance->rotation[0]*mesh_instance->rotation[0] + mesh_instance->rotation[1]*mesh_instance->rotation[1])) * (float)(180/M_PI),
+                                        asin(2*(mesh_instance->rotation[3]*mesh_instance->rotation[1] - mesh_instance->rotation[2]*mesh_instance->rotation[0])) * (float)(180/M_PI),
+                                        atan2(2*(mesh_instance->rotation[3]*mesh_instance->rotation[2] + mesh_instance->rotation[0]*mesh_instance->rotation[1]), 1 - 2*(mesh_instance->rotation[1]*mesh_instance->rotation[1] + mesh_instance->rotation[2]*mesh_instance->rotation[2])) * (float)(180/M_PI)
+                                }; if (rot_euler[0] != rot_euler[0]) rot_euler[0] = 0.0f; if (rot_euler[1] != rot_euler[1]) rot_euler[1] = 0.0f; if (rot_euler[2] != rot_euler[2]) rot_euler[2] = 0.0f;  // (NaN fix)
+                                if (ImGui::DragFloat3("ROTATION", rot_euler, 1.0f, -180.0f, 180.0f)) {
+                                        float4 rot_quat = linalg::qmul(
+                                                linalg::rotation_quat(float3{0, 0, 1}, rot_euler[2]*(float)(M_PI/180)),
+                                                linalg::qmul(
+                                                        linalg::rotation_quat(float3{0, 1, 0}, rot_euler[1]*(float)(M_PI/180)),
+                                                        linalg::rotation_quat(float3{1, 0, 0}, rot_euler[0]*(float)(M_PI/180))
+                                                )
+                                        );
+                                        mesh_instance->rotation[0] = rot_quat.x; mesh_instance->rotation[1] = rot_quat.y; mesh_instance->rotation[2] = rot_quat.z; mesh_instance->rotation[3] = rot_quat.w;
+                                }
                         }
                         if (ValueInJSONArray("scale", (*base_registration)["data"])) ImGui::DragFloat3("SCALE", mesh_instance->scale);
                         if (ValueInJSONArray("color", (*base_registration)["data"])) {
-                                // TODO
+                                ImVec4 color = ImGui::ColorConvertU32ToFloat4(mesh_instance->color_RGBA);
+                                float _temp;
+                                _temp = color.x; color.x = color.w; color.w = _temp;
+                                _temp = color.y; color.y = color.z; color.z = _temp;
+                                ImGui::ColorPicker4("COLOR", (float*)&color);
+                                _temp = color.x; color.x = color.w; color.w = _temp;
+                                _temp = color.y; color.y = color.z; color.z = _temp;
+                                mesh_instance->color_RGBA = ImGui::ColorConvertFloat4ToU32(color);
                         }
                         if (ValueInJSONArray("user_model", (*base_registration)["data"])) {
-                                // TODO
+                                // TODO: Button -> file picker -> SetUserModelAndOrTexture()
                         }
                         if (ValueInJSONArray("user_texture", (*base_registration)["data"])) {
-                                // TODO
+                                // TODO: Button -> file picker -> SetUserModelAndOrTexture()
                         }
                         if (extra_data.size() > 0) { ImGui::NewLine();
                                 uint64_t _uid = 0;
-                                // TODO
+                                for (auto& [label, val] : extra_data.items()) { ImGui::PushID(_uid); switch (val.type()) { default: break;
+                                        case (nlohmann::json::value_t::boolean): { bool _val = val;
+                                                ImGui::Checkbox(label.c_str(), &_val); val = _val;
+                                        } break;
+                                        case (nlohmann::json::value_t::number_float): { float _val = val;
+                                                ImGui::InputFloat(label.c_str(), &_val, 0, 0, "%f"); val = _val;
+                                        } break;
+                                        case (nlohmann::json::value_t::number_integer): { int64_t _val = val;
+                                                ImGui::InputScalar(label.c_str(), ImGuiDataType_S64, &_val); val = _val;
+                                        } break;
+                                        case (nlohmann::json::value_t::number_unsigned): { uint64_t _val = val;
+                                                ImGui::InputScalar(label.c_str(), ImGuiDataType_U64, &_val); val = _val;
+                                        } break;
+                                        case (nlohmann::json::value_t::string): { std::string _val = val;
+                                                ImGui::InputText(label.c_str(), &_val); val = _val;
+                                        } break;
+                                } ImGui::PopID(); _uid++; }
                         }
                 }
 
