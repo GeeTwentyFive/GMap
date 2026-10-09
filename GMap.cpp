@@ -269,14 +269,14 @@ int main(int argc, char* argv[]) { try {
                                         case (nlohmann::json::value_t::boolean): { bool _val = val;
                                                 ImGui::Checkbox(label.c_str(), &_val); val = _val;
                                         } break;
-                                        case (nlohmann::json::value_t::number_float): { float _val = val;
-                                                ImGui::InputFloat(label.c_str(), &_val, 0, 0, "%f"); val = _val;
-                                        } break;
                                         case (nlohmann::json::value_t::number_integer): { int64_t _val = val;
                                                 ImGui::InputScalar(label.c_str(), ImGuiDataType_S64, &_val); val = _val;
                                         } break;
                                         case (nlohmann::json::value_t::number_unsigned): { uint64_t _val = val;
                                                 ImGui::InputScalar(label.c_str(), ImGuiDataType_U64, &_val); val = _val;
+                                        } break;
+                                        case (nlohmann::json::value_t::number_float): { float _val = val;
+                                                ImGui::InputFloat(label.c_str(), &_val, 0, 0, "%f"); val = _val;
                                         } break;
                                         case (nlohmann::json::value_t::string): { std::string _val = val;
                                                 ImGui::InputText(label.c_str(), &_val); val = _val;
