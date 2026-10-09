@@ -17,7 +17,7 @@ You can pass path to map/scene JSON file as first CLI arg to `GMap` to load it (
 ```json
 [
         {
-                "name": "Example MapObject",
+                "name": "Example_MapObject",
                 "model": "PATH/TO/MODEL.obj",  // (optional texture has to be PNG with same base name in same dir as model ('PATH/TO/MODEL.png'))
                 "data": [],  // zero or more of: "position", "rotation", "scale", "color", "user_model", "user_texture"
                 "extra_data": {  // (bool, int, float, string) (OPTIONAL)
@@ -33,7 +33,7 @@ You can pass path to map/scene JSON file as first CLI arg to `GMap` to load it (
         // ...
 ]
 ```
-- `"model"`: Path to base/default model for MapObject. If a PNG texture with the same base name as the model in the same directory exists; it is used as the texture for the model.
+- `"model"`: Path to base/default model for MapObject. If a PNG texture with the same base name as the model in the same directory exists; it is used as the texture for the model. (Used as default model for `"user_model"`, otherwise not included in output)
 - `"data"`: Which data (with visual scene support) to include in inspector (where the user can modify it) and the output. Must be zero or more of: `"position"`, `"rotation"`, `"scale"`, `"color"`, `"user_model"`, `"user_texture"`. (`"user_model"` and `"user_texture"` allow the user to select a custom model and texture (respectively) for each instance of the MapObject during runtime)
 - `"extra_data"` (optional): Additional data (without visual scene support) to include in inspector and output (value of each member must be one of: `bool`, `int`, `float`, `string`)
 
