@@ -33,7 +33,7 @@ You can pass path to map/scene JSON file as first CLI arg to `GMap` to load it (
 ]
 ```
 - `"model"`: Path to base/default model for MapObject. Is also used to identify MapObject. If a PNG texture with the same base name as the model in the same directory exists; it is used as the texture for the model. Base name of model file is used as its label in GMap's GUI. It is **always** included in the output.
-- `"data"`: Which data (with visual scene support) to include in inspector (where the user can modify it) and the output. Must be one or more of: `"position"`, `"rotation"`, `"scale"`, `"color"`, `"user_model"`, `"user_texture"`. `"user_model"` and `"user_texture"` allow the user to select a custom model and texture (respectively) for each instance of the MapObject during runtime.
+- `"data"`: Which data (with visual scene support) to include in inspector (where the user can modify it) and the output. Must be one or more of: `"position"`, `"rotation"`, `"scale"`, `"color"`, `"user_model"`, `"user_texture"`. (`"user_model"` and `"user_texture"` allow the user to select a custom model and texture (respectively) for each instance of the MapObject during runtime)
 - `"extra_data"`: Additional data (without visual scene support) to include in inspector and output (value of each member must be one of: `bool`, `int`, `float`, `string`)
 
 
