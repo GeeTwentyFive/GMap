@@ -228,7 +228,24 @@ int main(int argc, char* argv[]) { try {
                 };
 
                 void DrawInspectorContents() {
-                        // TODO
+                        if (ValueInJSONArray("position", (*base_registration)["data"])) ImGui::DragFloat3("POSITION", mesh_instance->position);
+                        if (ValueInJSONArray("rotation", (*base_registration)["data"])) {
+                                // TODO
+                        }
+                        if (ValueInJSONArray("scale", (*base_registration)["data"])) ImGui::DragFloat3("SCALE", mesh_instance->scale);
+                        if (ValueInJSONArray("color", (*base_registration)["data"])) {
+                                // TODO
+                        }
+                        if (ValueInJSONArray("user_model", (*base_registration)["data"])) {
+                                // TODO
+                        }
+                        if (ValueInJSONArray("user_texture", (*base_registration)["data"])) {
+                                // TODO
+                        }
+                        if (extra_data.size() > 0) { ImGui::NewLine();
+                                uint64_t _uid = 0;
+                                // TODO
+                        }
                 }
 
                 nlohmann::json SerializeToJSON() {
@@ -289,9 +306,7 @@ int main(int argc, char* argv[]) { try {
                         }
 
                         nlohmann::json extra_data = nlohmann::json::object();
-                        if (ValueInJSONArray("extra_data", map_object_registrations[map_object_instance_json["model"]]["data"])) {
-                                extra_data = map_object_instance_json["data"]["extra_data"];
-                        }
+                        if (map_object_registrations[map_object_instance_json["model"]]["extra_data"].size() > 0) extra_data = map_object_instance_json["data"]["extra_data"];
 
                         return Create(
                                 map_object_instance_json["model"],
