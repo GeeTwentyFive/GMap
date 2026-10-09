@@ -16,10 +16,11 @@ You can pass path to map/scene JSON file as first CLI arg to `GMap` to load it (
 
 ```json
 [
-        {  // (only required field for each object is "model" (OBJ format))
+        {
+                "name": "Example MapObject",
                 "model": "PATH/TO/MODEL.obj",  // (optional texture has to be PNG with same base name in same dir as model ('PATH/TO/MODEL.png'))
-                "data": [],  // one or more of: "position", "rotation", "scale", "color", "user_model", "user_texture"
-                "extra_data": {  // (bool, int, float, string)
+                "data": [],  // zero or more of: "position", "rotation", "scale", "color", "user_model", "user_texture"
+                "extra_data": {  // (bool, int, float, string) (OPTIONAL)
                         "example_1": true,
                         "example_2": 727,
                         "example_3": 6.7,
@@ -32,9 +33,9 @@ You can pass path to map/scene JSON file as first CLI arg to `GMap` to load it (
         // ...
 ]
 ```
-- `"model"`: Path to base/default model for MapObject. Is also used to identify MapObject. If a PNG texture with the same base name as the model in the same directory exists; it is used as the texture for the model. Base name of model file is used as its label in GMap's GUI. It is **always** included in the output.
-- `"data"`: Which data (with visual scene support) to include in inspector (where the user can modify it) and the output. Must be one or more of: `"position"`, `"rotation"`, `"scale"`, `"color"`, `"user_model"`, `"user_texture"`. (`"user_model"` and `"user_texture"` allow the user to select a custom model and texture (respectively) for each instance of the MapObject during runtime)
-- `"extra_data"`: Additional data (without visual scene support) to include in inspector and output (value of each member must be one of: `bool`, `int`, `float`, `string`)
+- `"model"`: Path to base/default model for MapObject. If a PNG texture with the same base name as the model in the same directory exists; it is used as the texture for the model.
+- `"data"`: Which data (with visual scene support) to include in inspector (where the user can modify it) and the output. Must be zero or more of: `"position"`, `"rotation"`, `"scale"`, `"color"`, `"user_model"`, `"user_texture"`. (`"user_model"` and `"user_texture"` allow the user to select a custom model and texture (respectively) for each instance of the MapObject during runtime)
+- `"extra_data"` (optional): Additional data (without visual scene support) to include in inspector and output (value of each member must be one of: `bool`, `int`, `float`, `string`)
 
 
 # Controls
@@ -56,11 +57,13 @@ Input:
 ```json
 [
         {
-                "model": "objects/Solid.obj",
+                "name": "Solid",
+                "model": "models/Cube.obj",
                 "data": ["position", "rotation", "scale", "user_texture"]
         },
         {
-                "model": "objects/Prop.obj",
+                "name": "Prop",
+                "model": "models/Prop_Placeholder.obj",
                 "data": ["position", "rotation", "user_model"]
         }
 ]
@@ -70,7 +73,7 @@ Output:
 ```json
 [
         {
-                "model": "objects/Solid.obj",
+                "name": "Solid",
                 "data": {
                         "position": [
                                 0.0,
@@ -92,7 +95,7 @@ Output:
                 }
         },
         {
-                "model": "objects/Prop.obj",
+                "name": "Prop",
                 "data": {
                         "position": [
                                 0.0,
