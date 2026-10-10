@@ -39,9 +39,11 @@ using namespace linalg::aliases;
 const int CAMERA_SENSITIVITY = 16;
 const int STARTING_CAMERA_MOVE_SPEED = 8;
 
-int main(int argc, char* argv[]) { try {
-        nlohmann::json config = nlohmann::json::parse(std::string(std::istreambuf_iterator<char>(std::cin), std::istreambuf_iterator<char>())); if (config.type() != nlohmann::json::value_t::array) throw std::runtime_error("stdin is not a JSON array (read 'README.md')"); if (config.size() == 0) throw std::runtime_error("stdin JSON array is empty");
 
+bool ValueInJSONArray(nlohmann::json value, nlohmann::json array) { return (std::find(array.begin(), array.end(), value) != array.end()); };
+
+int main(int argc, char* argv[]) { try {
+        nlohmann::json stdin_json_array = nlohmann::json::parse(std::string(std::istreambuf_iterator<char>(std::cin), std::istreambuf_iterator<char>())); if (stdin_json_array.type() != nlohmann::json::value_t::array) throw std::runtime_error("stdin is not a JSON array (read 'README.md')"); if (stdin_json_array.size() == 0) throw std::runtime_error("stdin JSON array is empty");
         struct MapObjectRegistration {
                 std::string name;
                 std::string model;
@@ -55,8 +57,20 @@ int main(int argc, char* argv[]) { try {
                 } data;
                 nlohmann::json extra_data = nlohmann::json::object();;
         };
-        //
+        static std::unordered_map<std::string, MapObjectRegistration> map_object_registrations;
+        for (const auto& map_object : stdin_json_array) { if (!map_object.contains("name")) throw std::runtime_error("MapObject in stdin JSON array is missing key \"name\""); if (!map_object.contains("model")) throw std::runtime_error("MapObject in stdin JSON array is missing key \"model\"");
+                if (map_object_registrations.contains(map_object["name"])) throw std::runtime_error(std::string("MapObject with name '") + std::string(map_object["name"]) + "' is already registered");
+                MapObjectRegistration* registration = &map_object_registrations.emplace(map_object["name"], MapObjectRegistration{}).first->second;
+                registration->name = map_object["name"];
+                registration->model = map_object["model"];
+                if (map_object.contains("data")) {
+                        //if (ValueInJSONArray("position", map_object["data"]))
+                        // TODO
+                }
+                if (map_object.contains("extra_data")) registration->extra_data = map_object["extra_data"];
+        }
 
         // TODO
+
         ImGui_ImplOpenGL3_Shutdown(); ImGui_ImplGlfw_Shutdown(); ImGui::DestroyContext();
 return 0; } catch (const std::exception& e) { std::cout << e.what() << std::endl; return 1; } }
