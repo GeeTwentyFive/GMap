@@ -151,11 +151,112 @@ int main(int argc, char* argv[]) { try {
                         std::string user_model = "",
                         std::string user_texture = "",
                         nlohmann::json extra_data = nlohmann::json::object()
-                ) {
-                        // TODO
-                };
+                ) { if (!map_object_registrations.contains(name)) ERROR("No registered MapObject found with name '" + name + "'");
+                        MapObjectInstance* instance = map_object_instances.emplace_back(std::unique_ptr<MapObjectInstance>(new MapObjectInstance())).get();
+                        instance->base_registration = &map_object_registrations[name];
+                        std::string model_path = (user_model != "") ? user_model : instance->base_registration->model;
+                        std::string texture_path = (user_texture != "") ? user_texture : std::string(model_path).replace(model_path.rfind('.'), std::string::npos, ".png");
+                        instance->mesh_instance = AddMeshToScene(model_path, texture_path);
+                        instance->mesh_instance->position[0] = pos_x; instance->mesh_instance->position[1] = pos_y; instance->mesh_instance->position[2] = pos_z;
+                        instance->mesh_instance->rotation[0] = rot_x; instance->mesh_instance->rotation[1] = rot_y; instance->mesh_instance->rotation[2] = rot_z; instance->mesh_instance->rotation[3] = rot_w;
+                        instance->mesh_instance->scale[0] = scale_x; instance->mesh_instance->scale[1] = scale_y; instance->mesh_instance->scale[2] = scale_z;
+                        instance->mesh_instance->color_RGBA = color_shift_RGBA;
+                        instance->user_model = user_model;
+                        instance->user_texture = user_texture;
+                        instance->extra_data = extra_data;
+                        return instance;
+                } private: MapObjectInstance(){}; public:
 
-                // TODO
+                void SetUserModelAndOrTexture(std::string model_path = "", std::string texture_path = "") { if (model_path == "" && texture_path == "") return;
+                        if (model_path == "") {
+                                if (user_model != "") model_path = user_model;
+                                else model_path = base_registration->model;
+                        } else user_model = model_path;
+                        if (texture_path == "") {
+                                if (user_texture != "") texture_path = user_texture;
+                                else texture_path = std::string(model_path).replace(model_path.rfind('.'), std::string::npos, ".png");
+                        } else user_texture = texture_path;
+                        GRenderer3D::MeshInstance* previous_mesh_instance = mesh_instance;
+                        mesh_instance = AddMeshToScene(model_path, texture_path);
+                        mesh_instance->position[0] = previous_mesh_instance->position[0]; mesh_instance->position[1] = previous_mesh_instance->position[1]; mesh_instance->position[2] = previous_mesh_instance->position[2];
+                        mesh_instance->rotation[0] = previous_mesh_instance->rotation[0]; mesh_instance->rotation[1] = previous_mesh_instance->rotation[1]; mesh_instance->rotation[2] = previous_mesh_instance->rotation[2]; mesh_instance->rotation[3] = previous_mesh_instance->rotation[3];
+                        mesh_instance->scale[0] = previous_mesh_instance->scale[0]; mesh_instance->scale[1] = previous_mesh_instance->scale[1]; mesh_instance->scale[2] = previous_mesh_instance->scale[2];
+                        mesh_instance->color_RGBA = previous_mesh_instance->color_RGBA;
+                        previous_mesh_instance->Remove();
+                }
+                std::string GetUserModel() { return user_model; }
+                std::string GetUserTexture() { return user_texture; }
+
+                float4x4 Transform() {
+                        return linalg::mul(
+                                linalg::translation_matrix(float3{mesh_instance->position[0], mesh_instance->position[1], mesh_instance->position[2]}),
+                                linalg::mul(
+                                        linalg::rotation_matrix(float4{mesh_instance->rotation[0], mesh_instance->rotation[1], mesh_instance->rotation[2], mesh_instance->rotation[3]}),
+                                        linalg::scaling_matrix(float3{mesh_instance->scale[0], mesh_instance->scale[1], mesh_instance->scale[2]})
+                                )
+                        );
+                }
+
+                gcollision2::AABB AABB() {
+                        gcollision2::AABB aabb{{FLT_MAX, FLT_MAX, FLT_MAX}, {-FLT_MAX, -FLT_MAX, -FLT_MAX}};
+                        gcollision2::AABB* mesh_aabb = (user_model != "") ? GetMeshAABBFromFile(user_model) : GetMeshAABBFromFile(base_registration->model);
+                        float3 mesh_aabb_cuboid[8]{
+                                {mesh_aabb->min.x, mesh_aabb->min.y, mesh_aabb->min.z},
+                                {mesh_aabb->min.x, mesh_aabb->min.y, mesh_aabb->max.z},
+                                {mesh_aabb->min.x, mesh_aabb->max.y, mesh_aabb->min.z},
+                                {mesh_aabb->min.x, mesh_aabb->max.y, mesh_aabb->max.z},
+                                {mesh_aabb->max.x, mesh_aabb->min.y, mesh_aabb->min.z},
+                                {mesh_aabb->max.x, mesh_aabb->min.y, mesh_aabb->max.z},
+                                {mesh_aabb->max.x, mesh_aabb->max.y, mesh_aabb->min.z},
+                                {mesh_aabb->max.x, mesh_aabb->max.y, mesh_aabb->max.z}
+                        };
+                        float4x4 transform = Transform();
+                        for (float3& vertex : mesh_aabb_cuboid) vertex = linalg::mul(transform, float4{vertex, 1.0f}).xyz();
+                        for (const float3& vertex : mesh_aabb_cuboid) {
+                                if (vertex.x < aabb.min.x) aabb.min.x = vertex.x;
+                                else if (vertex.x > aabb.max.x) aabb.max.x = vertex.x;
+                                if (vertex.y < aabb.min.y) aabb.min.y = vertex.y;
+                                else if (vertex.y > aabb.max.y) aabb.max.y = vertex.y;
+                                if (vertex.z < aabb.min.z) aabb.min.z = vertex.z;
+                                else if (vertex.z > aabb.max.z) aabb.max.z = vertex.z;
+                        }
+                        return aabb;
+                }
+
+                MapObjectInstance* Clone() {
+                        return Create(
+                                base_registration->name,
+                                mesh_instance->position[0], mesh_instance->position[1], mesh_instance->position[2],
+                                mesh_instance->rotation[0], mesh_instance->rotation[1], mesh_instance->rotation[2], mesh_instance->rotation[3],
+                                mesh_instance->scale[0], mesh_instance->scale[1], mesh_instance->scale[2],
+                                mesh_instance->color_RGBA,
+                                user_model,
+                                user_texture,
+                                extra_data
+                        );
+                }
+
+                void Delete() {  // Deletes faster by copying last MapObject instance (pointer) in map_object_instances to this instance's place and then deleting that one from the end of the vector (rather than using std::vector::erase() which reorders the elements)
+                        mesh_instance->Remove();
+                        for (size_t i = 0; i < map_object_instances.size(); i++) {
+                                if (map_object_instances[i].get() == this) {
+                                        map_object_instances[i] = std::move(map_object_instances.back());
+                                        break;
+                                }
+                        }
+                        map_object_instances.pop_back();
+                }
+
+                void DrawInspectorContents() {
+                        // TODO
+                }
+
+                nlohmann::json SerializeToJSON() {
+                        // TODO
+                }
+                static MapObjectInstance* CreateFromJSON(nlohmann::json map_object_instance_json) {
+                        // TODO
+                }
         };
 
         // TODO
