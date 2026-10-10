@@ -362,7 +362,7 @@ int main(int argc, char* argv[]) { try {
                         }
 
                         nlohmann::json extra_data = nlohmann::json::object();
-                        if (registration->extra_data.size() > 0) extra_data = map_object_instance_json.at("data").at("extra_data");
+                        if (registration->extra_data.size() > 0) extra_data = map_object_instance_json.at("extra_data");
 
                         return Create(
                                 registration->name,
