@@ -46,9 +46,9 @@ You can pass path to map/scene JSON file as first CLI arg to `GMap` to load it (
 	- Scroll = change camera move speed
 	- Click = select/deselect object
 	- 0 = reset camera position to 0, 0, 0
-- Alt+D = duplicate selected object
 - Del = delete selected object
-- Alt+H = Hide/Show UI
+- Alt+D = duplicate selected object
+- Alt+H = hide/show UI
 
 
 # Example

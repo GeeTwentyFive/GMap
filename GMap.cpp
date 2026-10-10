@@ -506,6 +506,23 @@ int main(int argc, char* argv[]) { try {
                 else if (!gw.key_states[GWindower::KEY_H]) _show_ui_toggled = false;
 
                 if (show_ui) { ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame(); ImGui::NewFrame(); {
+                        ImGui::SetNextWindowPos({0.0f, (float)gw.window_height}, ImGuiCond_Always, {0.0f, 1.0f});
+                        ImGui::Begin("USAGE", NULL, (ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
+                                static const char USAGE_TEXT[] = ""
+                                        "USAGE:\n"
+                                        "- While right mouse button is held down:\n"
+                                        "    - Mouse = rotate camera\n"
+                                        "    - WASD, Space, CTRL = move camera\n"
+                                        "    - Scroll = change camera move speed\n"
+                                        "    - Click = select/deselect object\n"
+                                        "    - 0 = reset camera position to 0, 0, 0\n"
+                                        "- Del = delete selected object\n"
+                                        "- Alt+D = duplicate selected object\n"
+                                        "- Alt+H = hide/show UI"
+                                "";
+                                ImGui::TextUnformatted(USAGE_TEXT, USAGE_TEXT+sizeof(USAGE_TEXT));
+                        } ImGui::End();
+
                         ImGui::SetNextWindowPos({(float)gw.window_width, 0.0f}, ImGuiCond_Always, {1.0f, 0.0f});
                         ImGui::Begin("ADD", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
                                 for (const auto& [registered_model, _] : map_object_registrations) {
