@@ -81,8 +81,7 @@ int main(int argc, char* argv[]) { try {
 
         auto GetMeshDataFromFile = [](std::string mesh_path) -> GOBJ* {
                 static std::unordered_map<std::string, GOBJ> loaded_meshes;
-                if (!loaded_meshes.contains(mesh_path)) loaded_meshes[mesh_path] = GOBJ(mesh_path);
-                return &loaded_meshes[mesh_path];
+                return &loaded_meshes.try_emplace(mesh_path, mesh_path).first->second;
         };
 
         struct Image {unsigned char* pixels_RGBA = nullptr; int width = 0; int height = 0;};
