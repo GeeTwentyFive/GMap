@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <cuchar>
 #include <exception>
 #include <filesystem>
 #include <stdexcept>
@@ -32,6 +33,11 @@ using namespace linalg::aliases;
 #include <imgui/misc/cpp/imgui_stdlib.h>
 #include <GRenderer2D.hpp>
 #include <nfd.h>
+static inline void _NFD_SetWaylandDisplay(void* wayland_display) {  // (to avoid using #ifdef below (since you can't stack C macros on the same lines as source code...))
+#ifdef __linux__
+        NFD_SetWaylandDisplay((struct wl_display*)wayland_display);
+#endif
+}
 
 
 #define ERROR(msg) throw std::runtime_error(std::string("[ERROR] ") + __FILE__ + "@" + std::to_string(__LINE__) + " (" + __func__ + "): " + (msg))
@@ -75,7 +81,7 @@ int main(int argc, char* argv[]) { try {
                 if (map_object.contains("extra_data")) registration->extra_data = map_object["extra_data"];
         }
 
-        GWindower gw{0, 0, 4, 6}; gw.locked_mouse = false;
+        static GWindower gw{0, 0, 4, 6}; gw.locked_mouse = false;
         if (!gladLoadGL()) ERROR("Failed to load OpenGL functions");
 
         GRenderer3D gr3d;
@@ -128,6 +134,31 @@ int main(int argc, char* argv[]) { try {
                         calculated_aabbs[mesh_path] = aabb;
                 }
                 return &calculated_aabbs[mesh_path];
+        };
+
+        if (NFD_Init() != NFD_OKAY) ERROR(NFD_GetError()); _NFD_SetWaylandDisplay(gw.native_wayland_display);
+
+        static auto ShowAndGetPathFromOpenDialog = [](std::string target_file_type_extension = "") -> std::string {
+                std::string OUT_path = "";
+                char* path;
+                nfdopendialogu8args_t args{};
+                if (target_file_type_extension != "") {
+                        static nfdu8filteritem_t filter = {target_file_type_extension.c_str(), target_file_type_extension.c_str()};
+                        args.filterList = &filter; args.filterCount = 1;
+                }
+                std::string _current_path = std::filesystem::current_path().string();
+                args.defaultPath = _current_path.c_str();
+                args.parentWindow.handle = gw.native_window_handle;
+                #ifdef __linux__
+                        args.parentWindow.type = NFD_WINDOW_HANDLE_TYPE_WAYLAND;
+                #else
+                        args.parentWindow.type = NFD_WINDOW_HANDLE_TYPE_WINDOWS;
+                #endif
+                if (NFD_OpenDialogU8_With(&path, &args) == NFD_OKAY) {
+                        OUT_path = path;
+                        NFD_FreePathU8(path);
+                }
+                return OUT_path;
         };
 
         struct MapObjectInstance;
@@ -249,6 +280,22 @@ int main(int argc, char* argv[]) { try {
                 }
 
                 void DrawInspectorContents() {
+                        if (base_registration->data.user_model) {
+                                static const char button_label[] = "Model";
+                                if (ImGui::Button(button_label)) SetUserModelAndOrTexture(ShowAndGetPathFromOpenDialog("obj"));
+                                std::string path_label_text = user_model;
+                                if (path_label_text.size() > 32-sizeof(button_label)) path_label_text = "..." + path_label_text.substr(path_label_text.size() - (32-sizeof(button_label)));
+                                ImGui::SameLine();
+                                ImGui::TextUnformatted(path_label_text.c_str(), path_label_text.c_str()+path_label_text.size());
+                        }
+                        if (base_registration->data.user_texture) {
+                                static const char button_label[] = "Texture";
+                                if (ImGui::Button(button_label)) SetUserModelAndOrTexture("", ShowAndGetPathFromOpenDialog("png"));
+                                std::string path_label_text = user_texture;
+                                if (path_label_text.size() > 32-sizeof(button_label)) path_label_text = "..." + path_label_text.substr(path_label_text.size() - (32-sizeof(button_label)));
+                                ImGui::SameLine();
+                                ImGui::TextUnformatted(path_label_text.c_str(), path_label_text.c_str()+path_label_text.size());
+                        }
                         if (base_registration->data.position) ImGui::DragFloat3("POSITION", mesh_instance->position);
                         if (base_registration->data.rotation) {
                                 float rot_euler[3] = {
@@ -277,12 +324,6 @@ int main(int argc, char* argv[]) { try {
                                 _temp = color.x; color.x = color.w; color.w = _temp;
                                 _temp = color.y; color.y = color.z; color.z = _temp;
                                 mesh_instance->color_RGBA = ImGui::ColorConvertFloat4ToU32(color);
-                        }
-                        if (base_registration->data.user_model) {
-                                // TODO: ImGui::Button() -> NFD_OpenDialog() -> SetUserModelAndOrTexture()
-                        }
-                        if (base_registration->data.user_texture) {
-                                // TODO: ImGui::Button() -> NFD_OpenDialog() -> SetUserModelAndOrTexture()
                         }
                         if (extra_data.size() > 0) { ImGui::NewLine();
                                 uint64_t _uid = 0;
@@ -501,5 +542,5 @@ int main(int argc, char* argv[]) { try {
                         break;
                 }
         }
-        ImGui_ImplOpenGL3_Shutdown(); ImGui_ImplGlfw_Shutdown(); ImGui::DestroyContext();
+        ImGui_ImplOpenGL3_Shutdown(); ImGui_ImplGlfw_Shutdown(); ImGui::DestroyContext(); NFD_Quit();
 return 0; } catch (const std::exception& e) { std::cout << e.what() << std::endl; return 1; } }

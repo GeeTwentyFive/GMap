@@ -28,6 +28,6 @@
 [submodule "libs/libGCollision2"]
 	path = libs/libGCollision2
 	url = https://github.com/GeeTwentyFive/libGCollision2.git
-[submodule "libs/nativefiledialog"]
-	path = libs/nativefiledialog
-	url = https://github.com/mlabbe/nativefiledialog.git
+[submodule "libs/nativefiledialog-extended"]
+	path = libs/nativefiledialog-extended
+	url = https://github.com/btzy/nativefiledialog-extended.git
