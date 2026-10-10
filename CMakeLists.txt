@@ -38,6 +38,21 @@ add_library(dear_imgui
 target_include_directories(dear_imgui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/libs/imgui")
 target_compile_definitions(dear_imgui PRIVATE "IMGUI_IMPL_GLFW_DISABLE_X11")
 
+find_package(PkgConfig REQUIRED)
+
+pkg_check_modules(GTK3 REQUIRED IMPORTED_TARGET gtk+-3.0)
+
+add_library(nativefiledialog
+        "libs/nativefiledialog/src/nfd_common.c"
+        "$<$<PLATFORM_ID:Linux>:libs/nativefiledialog/src/nfd_gtk.c>"
+        "$<$<PLATFORM_ID:Windows>:libs/nativefiledialog/src/nfd_win.cpp>"
+)
+target_include_directories(nativefiledialog PUBLIC "libs/nativefiledialog/src/include")
+target_link_libraries(nativefiledialog PRIVATE
+        "$<$<PLATFORM_ID:Linux>:PkgConfig::GTK3>"
+        "$<$<PLATFORM_ID:Windows>:comctl32>"
+)
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
         GMAP_glad
         GWindower
@@ -45,4 +60,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         GRenderer2D
         nlohmann_json
         dear_imgui
+        nativefiledialog
 )

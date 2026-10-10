@@ -31,6 +31,7 @@ using namespace linalg::aliases;
 #include <imgui/backends/imgui_impl_opengl3.h>
 #include <imgui/misc/cpp/imgui_stdlib.h>
 #include <GRenderer2D.hpp>
+#include <nfd.h>
 
 
 #define ERROR(msg) throw std::runtime_error(std::string("[ERROR] ") + __FILE__ + "@" + std::to_string(__LINE__) + " (" + __func__ + "): " + (msg))
@@ -278,10 +279,10 @@ int main(int argc, char* argv[]) { try {
                                 mesh_instance->color_RGBA = ImGui::ColorConvertFloat4ToU32(color);
                         }
                         if (base_registration->data.user_model) {
-                                // TODO: Button -> file picker -> SetUserModelAndOrTexture()
+                                // TODO: ImGui::Button() -> NFD_OpenDialog() -> SetUserModelAndOrTexture()
                         }
                         if (base_registration->data.user_texture) {
-                                // TODO: Button -> file picker -> SetUserModelAndOrTexture()
+                                // TODO: ImGui::Button() -> NFD_OpenDialog() -> SetUserModelAndOrTexture()
                         }
                         if (extra_data.size() > 0) { ImGui::NewLine();
                                 uint64_t _uid = 0;
