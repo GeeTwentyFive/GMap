@@ -248,18 +248,257 @@ int main(int argc, char* argv[]) { try {
                 }
 
                 void DrawInspectorContents() {
-                        // TODO
+                        if (base_registration->data.position) ImGui::DragFloat3("POSITION", mesh_instance->position);
+                        if (base_registration->data.rotation) {
+                                float rot_euler[3] = {
+                                        atan2(2*(mesh_instance->rotation[3]*mesh_instance->rotation[0] + mesh_instance->rotation[1]*mesh_instance->rotation[2]), 1 - 2*(mesh_instance->rotation[0]*mesh_instance->rotation[0] + mesh_instance->rotation[1]*mesh_instance->rotation[1])) * (float)(180/M_PI),
+                                        asin(2*(mesh_instance->rotation[3]*mesh_instance->rotation[1] - mesh_instance->rotation[2]*mesh_instance->rotation[0])) * (float)(180/M_PI),
+                                        atan2(2*(mesh_instance->rotation[3]*mesh_instance->rotation[2] + mesh_instance->rotation[0]*mesh_instance->rotation[1]), 1 - 2*(mesh_instance->rotation[1]*mesh_instance->rotation[1] + mesh_instance->rotation[2]*mesh_instance->rotation[2])) * (float)(180/M_PI)
+                                }; if (rot_euler[0] != rot_euler[0]) rot_euler[0] = 0.0f; if (rot_euler[1] != rot_euler[1]) rot_euler[1] = 0.0f; if (rot_euler[2] != rot_euler[2]) rot_euler[2] = 0.0f;  // (NaN fix)
+                                if (ImGui::DragFloat3("ROTATION", rot_euler, 1.0f, -180.0f, 180.0f)) {
+                                        float4 rot_quat = linalg::qmul(
+                                                linalg::rotation_quat(float3{0, 0, 1}, rot_euler[2]*(float)(M_PI/180)),
+                                                linalg::qmul(
+                                                        linalg::rotation_quat(float3{0, 1, 0}, rot_euler[1]*(float)(M_PI/180)),
+                                                        linalg::rotation_quat(float3{1, 0, 0}, rot_euler[0]*(float)(M_PI/180))
+                                                )
+                                        );
+                                        mesh_instance->rotation[0] = rot_quat.x; mesh_instance->rotation[1] = rot_quat.y; mesh_instance->rotation[2] = rot_quat.z; mesh_instance->rotation[3] = rot_quat.w;
+                                }
+                        }
+                        if (base_registration->data.scale) ImGui::DragFloat3("SCALE", mesh_instance->scale);
+                        if (base_registration->data.color) {
+                                ImVec4 color = ImGui::ColorConvertU32ToFloat4(mesh_instance->color_RGBA);
+                                float _temp;
+                                _temp = color.x; color.x = color.w; color.w = _temp;
+                                _temp = color.y; color.y = color.z; color.z = _temp;
+                                ImGui::ColorPicker4("COLOR", (float*)&color);
+                                _temp = color.x; color.x = color.w; color.w = _temp;
+                                _temp = color.y; color.y = color.z; color.z = _temp;
+                                mesh_instance->color_RGBA = ImGui::ColorConvertFloat4ToU32(color);
+                        }
+                        if (base_registration->data.user_model) {
+                                // TODO: Button -> file picker -> SetUserModelAndOrTexture()
+                        }
+                        if (base_registration->data.user_texture) {
+                                // TODO: Button -> file picker -> SetUserModelAndOrTexture()
+                        }
+                        if (extra_data.size() > 0) { ImGui::NewLine();
+                                uint64_t _uid = 0;
+                                for (auto& [label, val] : extra_data.items()) { ImGui::PushID(_uid); switch (val.type()) { default: break;
+                                        case (nlohmann::json::value_t::boolean): { bool _val = val;
+                                                ImGui::Checkbox(label.c_str(), &_val); val = _val;
+                                        } break;
+                                        case (nlohmann::json::value_t::number_integer): { int64_t _val = val;
+                                                ImGui::InputScalar(label.c_str(), ImGuiDataType_S64, &_val); val = _val;
+                                        } break;
+                                        case (nlohmann::json::value_t::number_unsigned): { uint64_t _val = val;
+                                                ImGui::InputScalar(label.c_str(), ImGuiDataType_U64, &_val); val = _val;
+                                        } break;
+                                        case (nlohmann::json::value_t::number_float): { float _val = val;
+                                                ImGui::InputFloat(label.c_str(), &_val, 0, 0, "%f"); val = _val;
+                                        } break;
+                                        case (nlohmann::json::value_t::string): { std::string _val = val;
+                                                ImGui::InputText(label.c_str(), &_val); val = _val;
+                                        } break;
+                                } ImGui::PopID(); _uid++; }
+                        }
                 }
 
                 nlohmann::json SerializeToJSON() {
-                        // TODO
+                        nlohmann::json map_object_instance_json = nlohmann::json::object();
+
+                        map_object_instance_json["name"] = base_registration->name;
+
+                        map_object_instance_json["data"] = nlohmann::json::object();
+                        if (base_registration->data.position) map_object_instance_json["data"]["position"] = nlohmann::json::array({mesh_instance->position[0], mesh_instance->position[1], mesh_instance->position[2]});
+                        if (base_registration->data.rotation) map_object_instance_json["data"]["rotation"] = nlohmann::json::array({mesh_instance->rotation[0], mesh_instance->rotation[1], mesh_instance->rotation[2], mesh_instance->rotation[3]});
+                        if (base_registration->data.scale) map_object_instance_json["data"]["scale"] = nlohmann::json::array({mesh_instance->scale[0], mesh_instance->scale[1], mesh_instance->scale[2]});
+                        if (base_registration->data.color) map_object_instance_json["data"]["color"] = mesh_instance->color_RGBA;
+                        if (base_registration->data.user_model) map_object_instance_json["data"]["user_model"] = user_model;
+                        if (base_registration->data.user_texture) map_object_instance_json["data"]["user_texture"] = user_texture;
+
+                        if (extra_data.size() > 0) map_object_instance_json["extra_data"] = extra_data;
+
+                        return map_object_instance_json;
                 }
-                static MapObjectInstance* CreateFromJSON(nlohmann::json map_object_instance_json) {
-                        // TODO
+                static MapObjectInstance* CreateFromJSON(nlohmann::json map_object_instance_json) { if (!map_object_instance_json.is_object()) ERROR("Passed MapObjectInstance JSON is not a JSON object (it has to be curly braces)");
+                        const MapObjectRegistration* registration = &map_object_registrations[map_object_instance_json.at("name")];
+
+                        float pos_x = 0; float pos_y = 0; float pos_z = 0;
+                        if (registration->data.position) {
+                                pos_x = map_object_instance_json.at("data").at("position").at(0);
+                                pos_y = map_object_instance_json.at("data").at("position").at(1);
+                                pos_z = map_object_instance_json.at("data").at("position").at(2);
+                        }
+
+                        float rot_x = 0; float rot_y = 0; float rot_z = 0; float rot_w = 1;
+                        if (registration->data.rotation) {
+                                rot_x = map_object_instance_json.at("data").at("rotation").at(0);
+                                rot_y = map_object_instance_json.at("data").at("rotation").at(1);
+                                rot_z = map_object_instance_json.at("data").at("rotation").at(2);
+                                rot_w = map_object_instance_json.at("data").at("rotation").at(3);
+                        }
+
+                        float scale_x = 0; float scale_y = 0; float scale_z = 0;
+                        if (registration->data.scale) {
+                                scale_x = map_object_instance_json.at("data").at("scale").at(0);
+                                scale_y = map_object_instance_json.at("data").at("scale").at(1);
+                                scale_z = map_object_instance_json.at("data").at("scale").at(2);
+                        }
+
+                        uint32_t color = 0xFFFFFFFF;
+                        if (registration->data.color) {
+                                color = map_object_instance_json.at("data").at("color");
+                        }
+
+                        std::string user_model = "";
+                        if (registration->data.user_model) {
+                                user_model = map_object_instance_json.at("data").at("user_model");
+                        }
+
+                        std::string user_texture = "";
+                        if (registration->data.user_texture) {
+                                user_texture = map_object_instance_json.at("data").at("user_texture");
+                        }
+
+                        nlohmann::json extra_data = nlohmann::json::object();
+                        if (registration->extra_data.size() > 0) extra_data = map_object_instance_json.at("data").at("extra_data");
+
+                        return Create(
+                                registration->name,
+                                pos_x, pos_y, pos_z,
+                                rot_x, rot_y, rot_z, rot_w,
+                                scale_x, scale_y, scale_z,
+                                color,
+                                user_model,
+                                user_texture,
+                                extra_data
+                        );
                 }
         };
 
-        // TODO
+        if (argc > 1) { if (!std::filesystem::is_regular_file(argv[1])) throw std::runtime_error(std::string("CLI-provided file '") + argv[1] + "' not found or not regular file");
+                nlohmann::json input = nlohmann::json::parse(std::ifstream(argv[1])); if (!input.is_array()) throw std::runtime_error(std::string("'") + argv[1] + "' root is not a JSON array");
+                for (const nlohmann::json& map_object_instance_json : input) MapObjectInstance::CreateFromJSON(map_object_instance_json);
+        }
 
+        ImGui::CreateContext(); ImGui_ImplGlfw_InitForOpenGL((GLFWwindow*)(gw._glfwWindow), true); ImGui_ImplOpenGL3_Init("#version 460 core"); ImGui::GetIO().ConfigFlags |= (ImGuiConfigFlags_NoMouseCursorChange); ImGui::GetIO().IniFilename = NULL;
+
+        GRenderer2D gr2d;
+
+        static const uint32_t CROSSHAIR_TEXTURE[] = {
+                0x00000000, 0xFF000000, 0xFF000000, 0xFF000000, 0x00000000,
+                0xFF000000, 0xFF000000, 0xFFFFFFFF, 0xFF000000, 0xFF000000,
+                0xFF000000, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFF000000,
+                0xFF000000, 0xFF000000, 0xFFFFFFFF, 0xFF000000, 0xFF000000,
+                0x00000000, 0xFF000000, 0xFF000000, 0xFF000000, 0x00000000
+        };
+        GRenderer2D::SpriteInstance* crosshair_sprite = gr2d.AddSprite(gr2d.CreateSprite(CROSSHAIR_TEXTURE, 5, 5)); crosshair_sprite->z_depth = -0.99f;
+
+        MapObjectInstance* selected_map_object = nullptr;
+
+        glClearColor(0.0, 0.0, 0.0, 1.0);
+        GFramePacer gfp; gfp.target_frametime_ms = 1.0;  // (frame limiting itself not needed because using v-sync (and wait-until-input), using lib for other frame-pacing-related benefits)
+        while (gw.Update(true, 0.1, true)) {
+                double delta_time = gfp.Wait();
+
+                if (gw.mouse_button_states[GWindower::MOUSEBUTTON_RIGHT]) { if (gw.locked_mouse == false) { gw.locked_mouse = true; gw.mouse_x = gw.window_width/2; gw.mouse_y = gw.window_height/2; }
+                        gr3d.camera_yaw += gw.mouse_x * CAMERA_SENSITIVITY;
+                        gr3d.camera_pitch += gw.mouse_y * CAMERA_SENSITIVITY;
+                        static int camera_move_speed = STARTING_CAMERA_MOVE_SPEED;
+                        if (gw.mouse_scroll_delta > 0.5 || gw.key_states[GWindower::KEY_UP]) camera_move_speed *= 2;
+                        if (gw.mouse_scroll_delta < -0.5 || gw.key_states[GWindower::KEY_DOWN]) camera_move_speed /= 2;
+                        if (camera_move_speed < 1) camera_move_speed = 1;
+                        gr3d.camera_pos[1] += (-gw.key_states[GWindower::KEY_LEFT_CONTROL] + gw.key_states[GWindower::KEY_SPACE]) * camera_move_speed * delta_time;
+                        float2 move_dir = float2{
+                                (float)(-gw.key_states[GWindower::KEY_A] + gw.key_states[GWindower::KEY_D]),
+                                (float)(-gw.key_states[GWindower::KEY_W] + gw.key_states[GWindower::KEY_S])
+                        };
+                        if (linalg::length2(move_dir) != 0) move_dir = linalg::normalize(move_dir);
+                        move_dir = linalg::rot((float)(gr3d.camera_yaw*(2*M_PI/65536)), move_dir);
+                        gr3d.camera_pos[0] += -move_dir.x * camera_move_speed * delta_time;
+                        gr3d.camera_pos[2] += -move_dir.y * camera_move_speed * delta_time;
+
+                        if (gw.key_states[GWindower::KEY_ZERO]) { gr3d.camera_pos[0] = 0; gr3d.camera_pos[1] = 0; gr3d.camera_pos[2] = 0; }
+
+                        static bool _obj_pick_ray_casted = false;
+                        if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !_obj_pick_ray_casted) { _obj_pick_ray_casted = true;
+                                float3 ray_dir{
+                                        cosf((gr3d.camera_yaw*(2*M_PI/65536))-M_PI/2) * cosf(gr3d.camera_pitch*(2*M_PI/65536)),
+                                        sinf(gr3d.camera_pitch*(2*M_PI/65536)),
+                                        sinf((gr3d.camera_yaw*(2*M_PI/65536))-M_PI/2) * cosf(gr3d.camera_pitch*(2*M_PI/65536))
+                                };
+                                float closest_hit_map_object_distance = FLT_MAX;
+                                for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) {
+                                        gcollision2::AABB map_object_instance_aabb = map_object_instance->AABB();
+                                        if (map_object_instance_aabb.ContainsPoint(float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]})) continue;  // (skip if camera is inside of obj (to make it so you can select objs inside of other objs))
+                                        gcollision2::RayHitExtraInfo extra_hit_info;
+                                        if (gcollision2::IntersectRayAABB(
+                                                float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]},
+                                                ray_dir,
+                                                map_object_instance_aabb,
+                                                &extra_hit_info
+                                        )) if (extra_hit_info.distance < closest_hit_map_object_distance) { closest_hit_map_object_distance = extra_hit_info.distance;
+                                                selected_map_object = map_object_instance.get();
+                                        }
+                                }
+                                if (closest_hit_map_object_distance == FLT_MAX) selected_map_object = nullptr;  // (none hit; deselect)
+                        } else if (!gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT]) _obj_pick_ray_casted = false;
+                } else gw.locked_mouse = false;
+
+                static bool _cloned = false;
+                if (gw.key_states[GWindower::KEY_LEFT_ALT] && gw.key_states[GWindower::KEY_D] && selected_map_object != nullptr && !_cloned) { _cloned = true;
+                        selected_map_object = selected_map_object->Clone();
+                } else if (!gw.key_states[GWindower::KEY_D]) _cloned = false;
+
+                if (gw.key_states[GWindower::KEY_DELETE] && selected_map_object != nullptr) {
+                        selected_map_object->Delete();
+                        selected_map_object = nullptr;
+                }
+
+                static bool show_ui = true;
+
+                static bool _show_ui_toggled = false;
+                if (gw.key_states[GWindower::KEY_LEFT_ALT] && gw.key_states[GWindower::KEY_H] && !_show_ui_toggled) { _show_ui_toggled = true; show_ui = !show_ui; }
+                else if (!gw.key_states[GWindower::KEY_H]) _show_ui_toggled = false;
+
+                if (show_ui) { ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame(); ImGui::NewFrame(); {
+                        ImGui::SetNextWindowPos({(float)gw.window_width, 0.0f}, ImGuiCond_Always, {1.0f, 0.0f});
+                        ImGui::Begin("ADD", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
+                                for (const auto& [registered_model, _] : map_object_registrations) {
+                                        if (ImGui::Button(std::filesystem::path(registered_model).stem().c_str())) selected_map_object = MapObjectInstance::Create(registered_model, gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]);
+                                }
+                        } ImGui::End();
+
+                        if (selected_map_object != nullptr) {
+                                ImGui::SetNextWindowPos({0.0f, 0.0f}, ImGuiCond_Always, {0.0f, 0.0f});
+                                ImGui::Begin("INSPECTOR", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
+                                        selected_map_object->DrawInspectorContents();
+                                } ImGui::End();
+                        }
+                } ImGui::Render(); }
+
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); glViewport(0, 0, gw.window_width, gw.window_height);  // (leaving this inside of the mainloop in case I want to support windowed operation in the future)
+                gr3d.DrawFrame(gw.window_width, gw.window_height);
+                if (show_ui) {
+                        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+                        glClear(GL_DEPTH_BUFFER_BIT);
+                        crosshair_sprite->size[0] = gw.window_height/180.0; crosshair_sprite->size[1] = gw.window_height/180.0;
+                        crosshair_sprite->position[0] = (gw.window_width/2.0 - crosshair_sprite->size[0]/2.0); crosshair_sprite->position[1] = (gw.window_height/2.0 - crosshair_sprite->size[1]/2.0);
+                        gr2d.DrawFrame(gw.window_width, gw.window_height);
+                }
+
+
+                if(gw.key_states[GWindower::KEY_ESCAPE]) {
+                        nlohmann::json output = nlohmann::json::array();
+                        for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) {
+                                output.push_back(map_object_instance->SerializeToJSON());
+                        }
+                        std::cout << std::setw(4) << output << std::endl;
+
+                        break;
+                }
+        }
         ImGui_ImplOpenGL3_Shutdown(); ImGui_ImplGlfw_Shutdown(); ImGui::DestroyContext();
 return 0; } catch (const std::exception& e) { std::cout << e.what() << std::endl; return 1; } }
