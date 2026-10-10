@@ -449,7 +449,7 @@ int main(int argc, char* argv[]) { try {
                         ImGui::SetNextWindowPos({(float)gw.window_width, 0.0f}, ImGuiCond_Always, {1.0f, 0.0f});
                         ImGui::Begin("ADD", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
                                 for (const auto& [registered_model, _] : map_object_registrations) {
-                                        if (ImGui::Button(std::filesystem::path(registered_model).stem().c_str())) selected_map_object = MapObjectInstance::Create(registered_model);
+                                        if (ImGui::Button(std::filesystem::path(registered_model).stem().c_str())) selected_map_object = MapObjectInstance::Create(registered_model, gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]);
                                 }
                         } ImGui::End();
 
