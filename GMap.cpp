@@ -162,6 +162,7 @@ int main(int argc, char* argv[]) { try {
                         instance->mesh_instance->color_RGBA = color_shift_RGBA;
                         instance->user_model = user_model;
                         instance->user_texture = user_texture;
+                        if (extra_data.empty()) extra_data = instance->base_registration->extra_data;
                         instance->extra_data = extra_data;
                         return instance;
                 } private: MapObjectInstance(){}; public:
