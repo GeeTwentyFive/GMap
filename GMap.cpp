@@ -396,7 +396,7 @@ int main(int argc, char* argv[]) { try {
                                 rot_w = map_object_instance_json.at("data").at("rotation").at(3);
                         }
 
-                        float scale_x = 0; float scale_y = 0; float scale_z = 0;
+                        float scale_x = 1; float scale_y = 1; float scale_z = 1;
                         if (registration->data.scale) {
                                 scale_x = map_object_instance_json.at("data").at("scale").at(0);
                                 scale_y = map_object_instance_json.at("data").at("scale").at(1);
