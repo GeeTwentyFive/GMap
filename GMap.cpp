@@ -196,7 +196,7 @@ int main(int argc, char* argv[]) { try {
                         std::string user_model = "",
                         std::string user_texture = "",
                         nlohmann::json extra_data = nlohmann::json::object()
-                ) { if (!map_object_registrations.contains(name)) ERROR("No registered MapObject found with name '" + name + "'");
+                ) { if (!map_object_registrations.contains(name)) throw std::runtime_error(std::string("ERROR: No registered MapObject found with name '") + name + "'");
                         MapObjectInstance* instance = map_object_instances.emplace_back(std::unique_ptr<MapObjectInstance>(new MapObjectInstance())).get();
                         instance->base_registration = &map_object_registrations[name];
                         std::string model_path = (user_model != "") ? user_model : instance->base_registration->model;
@@ -378,8 +378,11 @@ int main(int argc, char* argv[]) { try {
 
                         return map_object_instance_json;
                 }
-                static MapObjectInstance* CreateFromJSON(nlohmann::json map_object_instance_json) { if (!map_object_instance_json.is_object()) ERROR("Passed MapObjectInstance JSON is not a JSON object (it has to be curly braces)");
-                        const MapObjectRegistration* registration = &map_object_registrations[map_object_instance_json.at("name")];
+                static MapObjectInstance* CreateFromJSON(nlohmann::json map_object_instance_json) { if (!map_object_instance_json.is_object()) ERROR("Passed MapObject instance JSON is not a JSON object (it has to be curly braces)");
+                        std::string name = map_object_instance_json.at("name");
+
+                        if (!map_object_registrations.contains(name)) throw std::runtime_error(std::string("ERROR: No registered MapObject found with name '") + name + "'");
+                        const MapObjectRegistration* registration = &map_object_registrations[name];
 
                         float pos_x = 0; float pos_y = 0; float pos_z = 0;
                         if (registration->data.position) {
@@ -422,7 +425,7 @@ int main(int argc, char* argv[]) { try {
                         if (registration->extra_data.size() > 0) extra_data = map_object_instance_json.at("extra_data");
 
                         return Create(
-                                registration->name,
+                                name,
                                 pos_x, pos_y, pos_z,
                                 rot_x, rot_y, rot_z, rot_w,
                                 scale_x, scale_y, scale_z,
@@ -436,7 +439,7 @@ int main(int argc, char* argv[]) { try {
 
         if (argc > 1) { if (!std::filesystem::is_regular_file(argv[1])) throw std::runtime_error(std::string("CLI-provided file '") + argv[1] + "' not found or not regular file");
                 nlohmann::json input = nlohmann::json::parse(std::ifstream(argv[1])); if (!input.is_array()) throw std::runtime_error(std::string("'") + argv[1] + "' root is not a JSON array");
-                for (const nlohmann::json& map_object_instance_json : input) MapObjectInstance::CreateFromJSON(map_object_instance_json);
+                for (size_t i = 0; i < input.size(); i++) { try { MapObjectInstance::CreateFromJSON(input[i]); } catch (const std::exception& e) { throw std::runtime_error(std::string("ERROR: Failed to load MapObject instance ") + std::to_string(i) + " from '"+argv[1]+"':\n" + input[i].dump(4) + "\n\n" + e.what()); } }
         }
 
         ImGui::CreateContext(); ImGui_ImplGlfw_InitForOpenGL((GLFWwindow*)(gw._glfwWindow), true); ImGui_ImplOpenGL3_Init("#version 460 core"); ImGui::GetIO().ConfigFlags |= (ImGuiConfigFlags_NoMouseCursorChange); ImGui::GetIO().IniFilename = NULL;
