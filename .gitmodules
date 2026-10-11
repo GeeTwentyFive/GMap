@@ -31,3 +31,6 @@
 [submodule "libs/nativefiledialog-extended"]
 	path = libs/nativefiledialog-extended
 	url = https://github.com/btzy/nativefiledialog-extended.git
+[submodule "libs/libGLineRenderer3D"]
+	path = libs/libGLineRenderer3D
+	url = https://github.com/GeeTwentyFive/libGLineRenderer3D.git

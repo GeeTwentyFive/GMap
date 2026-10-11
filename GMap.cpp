@@ -38,6 +38,7 @@ static inline void _NFD_SetWaylandDisplay(void* wayland_display) {  // (to avoid
         NFD_SetWaylandDisplay((struct wl_display*)wayland_display);
 #endif
 }
+#include <GLineRenderer3D.hpp>
 
 
 #define ERROR(msg) throw std::runtime_error(std::string("[ERROR] ") + __FILE__ + "@" + std::to_string(__LINE__) + " (" + __func__ + "): " + (msg))
@@ -82,6 +83,7 @@ int main(int argc, char* argv[]) { try {
                 if (map_object_registrations.contains(map_object["name"])) throw std::runtime_error(std::string("MapObject with name '") + std::string(map_object["name"]) + "' is already registered");
                 MapObjectRegistration* registration = &map_object_registrations.emplace(map_object["name"], MapObjectRegistration{}).first->second;
                 registration->name = map_object["name"];
+                std::cout << registration->name << std::endl; // TEMP; TEST
                 registration->model = std::filesystem::path(map_object["model"]).lexically_normal().generic_string();
                 if (map_object.contains("data")) {
                         if (IsValueInJSONArray("position", map_object["data"])) registration->data.position = true;
@@ -451,6 +453,8 @@ int main(int argc, char* argv[]) { try {
         };
         GRenderer2D::SpriteInstance* crosshair_sprite = gr2d.AddSprite(gr2d.CreateSprite(CROSSHAIR_TEXTURE, 5, 5)); crosshair_sprite->z_depth = -0.99f;
 
+        GLineRenderer3D glr3d;
+
         MapObjectInstance* selected_map_object = nullptr;
 
         glClearColor(0.0, 0.0, 0.0, 1.0);
@@ -520,7 +524,19 @@ int main(int argc, char* argv[]) { try {
 
                 if (show_ui) {
                         if (selected_map_object != nullptr) {
-                                // TODO: Draw AABB
+                                gcollision2::AABB aabb = selected_map_object->AABB();
+                                glr3d.DrawLine(aabb.min.x, aabb.min.y, aabb.min.z, aabb.min.x, aabb.max.y, aabb.min.z);
+                                glr3d.DrawLine(aabb.min.x, aabb.max.y, aabb.min.z, aabb.max.x, aabb.max.y, aabb.min.z);
+                                glr3d.DrawLine(aabb.max.x, aabb.max.y, aabb.min.z, aabb.max.x, aabb.min.y, aabb.min.z);
+                                glr3d.DrawLine(aabb.max.x, aabb.min.y, aabb.min.z, aabb.min.x, aabb.min.y, aabb.min.z);
+                                glr3d.DrawLine(aabb.min.x, aabb.min.y, aabb.max.z, aabb.min.x, aabb.max.y, aabb.max.z);
+                                glr3d.DrawLine(aabb.min.x, aabb.max.y, aabb.max.z, aabb.max.x, aabb.max.y, aabb.max.z);
+                                glr3d.DrawLine(aabb.max.x, aabb.max.y, aabb.max.z, aabb.max.x, aabb.min.y, aabb.max.z);
+                                glr3d.DrawLine(aabb.max.x, aabb.min.y, aabb.max.z, aabb.min.x, aabb.min.y, aabb.max.z);
+                                glr3d.DrawLine(aabb.min.x, aabb.min.y, aabb.min.z, aabb.min.x, aabb.min.y, aabb.max.z);
+                                glr3d.DrawLine(aabb.min.x, aabb.max.y, aabb.min.z, aabb.min.x, aabb.max.y, aabb.max.z);
+                                glr3d.DrawLine(aabb.max.x, aabb.max.y, aabb.min.z, aabb.max.x, aabb.max.y, aabb.max.z);
+                                glr3d.DrawLine(aabb.max.x, aabb.min.y, aabb.min.z, aabb.max.x, aabb.min.y, aabb.max.z);
                         }
 
                         ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame(); ImGui::NewFrame(); { ImGui::SetNextWindowPos({0.0f, (float)gw.window_height}, ImGuiCond_Always, {0.0f, 1.0f}); ImGui::Begin("USAGE", NULL, (ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); { ImGui::TextUnformatted(USAGE_TEXT, USAGE_TEXT+sizeof(USAGE_TEXT)); } ImGui::End();
@@ -543,11 +559,16 @@ int main(int argc, char* argv[]) { try {
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); glViewport(0, 0, gw.window_width, gw.window_height);  // (leaving this inside of the mainloop in case I want to support windowed operation in the future)
                 gr3d.DrawFrame(gw.window_width, gw.window_height);
                 if (show_ui) {
-                        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+                        glClear(GL_DEPTH_BUFFER_BIT);
+                        glr3d.camera_pos[0] = gr3d.camera_pos[0]; glr3d.camera_pos[1] = gr3d.camera_pos[1]; glr3d.camera_pos[2] = gr3d.camera_pos[2]; glr3d.camera_yaw = gr3d.camera_yaw; glr3d.camera_pitch = gr3d.camera_pitch; glr3d.camera_fov = gr3d.camera_fov; glr3d.camera_near = gr3d.camera_near; glr3d.camera_far = gr3d.camera_far;
+                        glr3d.DrawFrame(gw.window_width, gw.window_height);
                         glClear(GL_DEPTH_BUFFER_BIT);
                         crosshair_sprite->size[0] = gw.window_height/180.0; crosshair_sprite->size[1] = gw.window_height/180.0;
                         crosshair_sprite->position[0] = (gw.window_width/2.0 - crosshair_sprite->size[0]/2.0); crosshair_sprite->position[1] = (gw.window_height/2.0 - crosshair_sprite->size[1]/2.0);
                         gr2d.DrawFrame(gw.window_width, gw.window_height);
+                        glClear(GL_DEPTH_BUFFER_BIT);
+                        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
                 }
 
 
