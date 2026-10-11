@@ -58,12 +58,12 @@ Input:
 [
         {
                 "name": "Solid",
-                "model": "models/Cube.obj",
+                "model": "MapObjects/Solid.obj",
                 "data": ["position", "rotation", "scale", "user_texture"]
         },
         {
                 "name": "Prop",
-                "model": "models/Prop_Placeholder.obj",
+                "model": "MapObjects/Prop_placeholder.obj",
                 "data": ["position", "rotation", "user_model"]
         }
 ]
