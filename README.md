@@ -1,4 +1,4 @@
-![](_assets/GMap.webp)
+<video src="_assets/GMap.mp4"></video>
 
 Intended to be used either directly for new games by reading from output JSON, or by feeding output JSON into custom converter program which would convert it to an already existing map file format for an existing game
 
