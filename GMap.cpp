@@ -78,12 +78,11 @@ int main(int argc, char* argv[]) { try {
                 } data;
                 nlohmann::json extra_data = nlohmann::json::object();;
         };
-        static std::unordered_map<std::string, MapObjectRegistration> map_object_registrations;
+        static std::unordered_map<std::string, MapObjectRegistration> map_object_registrations; static std::vector<std::string> map_object_names; // (to keep same order as input registry in GUI)
         for (const auto& map_object : stdin_json_array) { if (!map_object.contains("name")) throw std::runtime_error("MapObject in stdin JSON array is missing key \"name\""); if (!map_object.contains("model")) throw std::runtime_error("MapObject in stdin JSON array is missing key \"model\"");
                 if (map_object_registrations.contains(map_object["name"])) throw std::runtime_error(std::string("MapObject with name '") + std::string(map_object["name"]) + "' is already registered");
                 MapObjectRegistration* registration = &map_object_registrations.emplace(map_object["name"], MapObjectRegistration{}).first->second;
-                registration->name = map_object["name"];
-                std::cout << registration->name << std::endl; // TEMP; TEST
+                registration->name = map_object["name"]; map_object_names.push_back(registration->name);
                 registration->model = std::filesystem::path(map_object["model"]).lexically_normal().generic_string();
                 if (map_object.contains("data")) {
                         if (IsValueInJSONArray("position", map_object["data"])) registration->data.position = true;
@@ -542,8 +541,8 @@ int main(int argc, char* argv[]) { try {
                         ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame(); ImGui::NewFrame(); { ImGui::SetNextWindowPos({0.0f, (float)gw.window_height}, ImGuiCond_Always, {0.0f, 1.0f}); ImGui::Begin("USAGE", NULL, (ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); { ImGui::TextUnformatted(USAGE_TEXT, USAGE_TEXT+sizeof(USAGE_TEXT)); } ImGui::End();
                                 ImGui::SetNextWindowPos({(float)gw.window_width, 0.0f}, ImGuiCond_Always, {1.0f, 0.0f});
                                 ImGui::Begin("ADD", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
-                                        for (const auto& [registered_model, _] : map_object_registrations) {
-                                                if (ImGui::Button(std::filesystem::path(registered_model).stem().c_str())) selected_map_object = MapObjectInstance::Create(registered_model, gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]);
+                                        for (const std::string& name : map_object_names) {
+                                                if (ImGui::Button(name.c_str())) selected_map_object = MapObjectInstance::Create(name, gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]);
                                         }
                                 } ImGui::End();
 
