@@ -95,7 +95,7 @@ int main(int argc, char* argv[]) { try {
                 if (map_object.contains("extra_data")) registration->extra_data = map_object["extra_data"];
         }
 
-        static GWindower gw{0, 0, 4, 6}; gw.locked_mouse = false;
+        static GWindower gw{1280, 720, 4, 6}; gw.locked_mouse = false;
         if (!gladLoadGL()) ERROR("Failed to load OpenGL functions");
 
         GRenderer3D gr3d;
