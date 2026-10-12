@@ -461,7 +461,7 @@ int main(int argc, char* argv[]) { try {
 
         glClearColor(0.0, 0.0, 0.0, 1.0);
         GFramePacer gfp; gfp.target_frametime_ms = 1.0;  // (frame limiting itself not needed because using v-sync (and wait-until-input), using lib for other frame-pacing-related benefits)
-        while (gw.Update(true, 0.1, true)) {
+        while (gw.Update(false, 0.0, true)) {
                 double delta_time = gfp.Wait();
 
                 if (gw.mouse_button_states[GWindower::MOUSEBUTTON_RIGHT]) { if (gw.locked_mouse == false) { gw.locked_mouse = true; gw.mouse_x = gw.window_width/2; gw.mouse_y = gw.window_height/2; }
