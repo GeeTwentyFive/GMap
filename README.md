@@ -5,7 +5,7 @@ Intended to be used either directly for new games by reading from output JSON, o
 
 # Usage
 
-Run `GMap` and pipe a MapObject registry (JSON array of JSON objects) into its stdin (e.g. via `|`, `<`, OS API syscalls, ...) (ex.: `cat GMapObjectRegistry.json | GMap.exe`)
+Run `GMap` and pipe a MapObject registry (JSON array of JSON objects) into its stdin (e.g. via `|`, `<`, OS API syscalls, ...) (ex.: `cat GMapObjectRegistry.json | ./GMap.exe`)
 
 On exit: JSON of current map/scene is outputted to stdout (you can compose this with other programs/scripts (or just pipe to file: `> MAP_NAME.json`))
 
