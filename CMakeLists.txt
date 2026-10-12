@@ -40,6 +40,7 @@ add_library(dear_imgui
 )
 target_include_directories(dear_imgui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/libs/imgui")
 target_compile_definitions(dear_imgui PRIVATE "IMGUI_IMPL_GLFW_DISABLE_X11")
+target_link_libraries(dear_imgui glfw)
 
 set(NFD_PORTAL ON CACHE BOOL "" FORCE)
 set(NFD_X11 OFF CACHE BOOL "" FORCE)
