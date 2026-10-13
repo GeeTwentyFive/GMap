@@ -310,14 +310,30 @@ int main(int argc, char* argv[]) { try {
                                 ImGui::SameLine();
                                 ImGui::TextUnformatted(path_label_text.c_str(), path_label_text.c_str()+path_label_text.size());
                         }
-                        if (base_registration->data.position) ImGui::DragFloat3("POSITION", mesh_instance->position);
+                        if (base_registration->data.position) {
+                                float previous_position[3] = {mesh_instance->position[0], mesh_instance->position[1], mesh_instance->position[2]};
+                                if (ImGui::DragFloat3("POSITION", mesh_instance->position)) {
+                                        if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT]) { // round if click-dragging
+                                                if (mesh_instance->position[0] != previous_position[0]) mesh_instance->position[0] = std::round(mesh_instance->position[0]);
+                                                if (mesh_instance->position[1] != previous_position[1]) mesh_instance->position[1] = std::round(mesh_instance->position[1]);
+                                                if (mesh_instance->position[2] != previous_position[2]) mesh_instance->position[2] = std::round(mesh_instance->position[2]);
+                                        }
+                                }
+                        }
                         if (base_registration->data.rotation) {
+                                static const float ROTATION_FRACTION = 180.0f/32.0f;
                                 float rot_euler[3] = {
                                         atan2(2*(mesh_instance->rotation[3]*mesh_instance->rotation[0] + mesh_instance->rotation[1]*mesh_instance->rotation[2]), 1 - 2*(mesh_instance->rotation[0]*mesh_instance->rotation[0] + mesh_instance->rotation[1]*mesh_instance->rotation[1])) * (float)(180/M_PI),
                                         asin(2*(mesh_instance->rotation[3]*mesh_instance->rotation[1] - mesh_instance->rotation[2]*mesh_instance->rotation[0])) * (float)(180/M_PI),
                                         atan2(2*(mesh_instance->rotation[3]*mesh_instance->rotation[2] + mesh_instance->rotation[0]*mesh_instance->rotation[1]), 1 - 2*(mesh_instance->rotation[1]*mesh_instance->rotation[1] + mesh_instance->rotation[2]*mesh_instance->rotation[2])) * (float)(180/M_PI)
                                 }; if (rot_euler[0] != rot_euler[0]) rot_euler[0] = 0.0f; if (rot_euler[1] != rot_euler[1]) rot_euler[1] = 0.0f; if (rot_euler[2] != rot_euler[2]) rot_euler[2] = 0.0f;  // (NaN fix)
-                                if (ImGui::DragFloat3("ROTATION", rot_euler, 1.0f, -180.0f, 180.0f)) {
+                                float previous_rot_euler[3] = {rot_euler[0], rot_euler[1], rot_euler[2]};
+                                if (ImGui::DragFloat3("ROTATION", rot_euler, ROTATION_FRACTION, -180.0f, 180.0f)) {
+                                        if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT]) { // round to multiple of target rotation fraction if click-dragging
+                                                if (rot_euler[0] != previous_rot_euler[0]) rot_euler[0] = std::round(rot_euler[0] / ROTATION_FRACTION) * ROTATION_FRACTION;
+                                                if (rot_euler[1] != previous_rot_euler[1]) rot_euler[1] = std::round(rot_euler[1] / ROTATION_FRACTION) * ROTATION_FRACTION;
+                                                if (rot_euler[2] != previous_rot_euler[2]) rot_euler[2] = std::round(rot_euler[2] / ROTATION_FRACTION) * ROTATION_FRACTION;
+                                        }
                                         float4 rot_quat = linalg::qmul(
                                                 linalg::rotation_quat(float3{0, 0, 1}, rot_euler[2]*(float)(M_PI/180)),
                                                 linalg::qmul(
@@ -328,7 +344,16 @@ int main(int argc, char* argv[]) { try {
                                         mesh_instance->rotation[0] = rot_quat.x; mesh_instance->rotation[1] = rot_quat.y; mesh_instance->rotation[2] = rot_quat.z; mesh_instance->rotation[3] = rot_quat.w;
                                 }
                         }
-                        if (base_registration->data.scale) ImGui::DragFloat3("SCALE", mesh_instance->scale);
+                        if (base_registration->data.scale) {
+                                float previous_scale[3] = {mesh_instance->scale[0], mesh_instance->scale[1], mesh_instance->scale[2]};
+                                if (ImGui::DragFloat3("SCALE", mesh_instance->scale)) {
+                                        if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT]) { // round if click-dragging
+                                                if (mesh_instance->scale[0] != previous_scale[0]) mesh_instance->scale[0] = std::round(mesh_instance->scale[0]);
+                                                if (mesh_instance->scale[1] != previous_scale[1]) mesh_instance->scale[1] = std::round(mesh_instance->scale[1]);
+                                                if (mesh_instance->scale[2] != previous_scale[2]) mesh_instance->scale[2] = std::round(mesh_instance->scale[2]);
+                                        }
+                                }
+                        }
                         if (base_registration->data.color) {
                                 ImVec4 color = ImGui::ColorConvertU32ToFloat4(mesh_instance->color_RGBA);
                                 float _temp;
@@ -524,6 +549,12 @@ int main(int argc, char* argv[]) { try {
                 if (gw.key_states[GWindower::KEY_LEFT_ALT] && gw.key_states[GWindower::KEY_H] && !_show_ui_toggled) { _show_ui_toggled = true; show_ui = !show_ui; }
                 else if (!gw.key_states[GWindower::KEY_H]) _show_ui_toggled = false;
 
+                static bool show_quit_dialog = false;
+
+                static bool _show_quit_dialog_toggled = false;
+                if (gw.key_states[GWindower::KEY_ESCAPE] && !_show_quit_dialog_toggled) { _show_quit_dialog_toggled = true; show_quit_dialog = !show_quit_dialog; }
+                else if (!gw.key_states[GWindower::KEY_ESCAPE]) _show_quit_dialog_toggled = false;
+
                 if (show_ui) {
                         if (selected_map_object != nullptr) {
                                 gcollision2::AABB aabb = selected_map_object->AABB();
@@ -555,7 +586,23 @@ int main(int argc, char* argv[]) { try {
                                                 selected_map_object->DrawInspectorContents();
                                         } ImGui::End();
                                 }
-                        } ImGui::Render();
+
+                                if (show_quit_dialog) {
+                                        ImGui::SetNextWindowPos({(float)gw.window_width/2.0f, (float)gw.window_height/2.0f}, ImGuiCond_Always, {0.5f, 0.5f});
+                                        ImGui::Begin("QUIT_DIALOG", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
+                                                if (ImGui::Button("Save & Quit")) {
+                                                        nlohmann::json output = nlohmann::json::array();
+                                                        for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) {
+                                                                output.push_back(map_object_instance->SerializeToJSON());
+                                                        }
+                                                        std::cout << std::setw(4) << output << std::endl;
+                                                        break;
+                                                }
+                                                if (ImGui::Button("Quit without saving")) break;
+                                                if (ImGui::Button("Cancel")) show_quit_dialog = false;
+                                        } ImGui::End();
+                                }
+                        } ImGui::Render(); if (gw.mouse_button_states[GWindower::MOUSEBUTTON_RIGHT]) ImGui::SetWindowFocus(); // (unfocus GUI if controlling camera)
                 }
 
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); glViewport(0, 0, gw.window_width, gw.window_height);  // (leaving this inside of the mainloop in case I want to support windowed operation in the future)
@@ -571,17 +618,6 @@ int main(int argc, char* argv[]) { try {
                         glClear(GL_DEPTH_BUFFER_BIT);
                         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-                }
-
-
-                if(gw.key_states[GWindower::KEY_ESCAPE]) {
-                        nlohmann::json output = nlohmann::json::array();
-                        for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) {
-                                output.push_back(map_object_instance->SerializeToJSON());
-                        }
-                        std::cout << std::setw(4) << output << std::endl;
-
-                        break;
                 }
         }
         ImGui_ImplOpenGL3_Shutdown(); ImGui_ImplGlfw_Shutdown(); ImGui::DestroyContext(); NFD_Quit();
