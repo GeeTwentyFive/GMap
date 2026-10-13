@@ -114,5 +114,5 @@ Output:
 ```
 
 
-## Contributors
+# Contributors
 - Gamma (shygamma) (HUGE help testing and suggesting)
