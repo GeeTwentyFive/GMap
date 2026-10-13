@@ -7,7 +7,7 @@ Intended to be used either directly for new games by reading from output JSON, o
 
 Run `GMap` and pipe a MapObject registry (JSON array of JSON objects) into its stdin (e.g. via `|`, `<`, OS API syscalls, ...) (ex.: `cat GMapObjectRegistry.json | ./GMap.exe`)
 
-On exit: JSON of current map/scene is outputted to stdout (you can compose this with other programs/scripts (or just pipe to file: `> MAP_NAME.json`))
+On `Save & Quit`: JSON of current map/scene is outputted to stdout (you can compose this with other programs/scripts (or just pipe to file: `> MAP_NAME.json`))
 
 You can pass path to map/scene JSON file as first CLI arg to `GMap` to load it (ex.: `cat GMapObjectRegistry.json | GMap.exe MAP_NAME.json`)
 
@@ -48,7 +48,6 @@ You can pass path to map/scene JSON file as first CLI arg to `GMap` to load it (
 	- 0 = reset camera position to 0, 0, 0
 - Del = delete selected object
 - Alt+D = duplicate selected object
-- Alt+H = hide/show UI
 
 
 # Example

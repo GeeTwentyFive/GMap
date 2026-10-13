@@ -1,3 +1,4 @@
+#include <climits>
 #include <cstdint>
 #include <cuchar>
 #include <exception>
@@ -47,6 +48,10 @@ static inline void _NFD_SetWaylandDisplay(void* wayland_display) {  // (to avoid
 const int CAMERA_SENSITIVITY = 16;
 const int STARTING_CAMERA_MOVE_SPEED = 8;
 
+const float POSITION_SNAP = 1.0f;
+const float ROTATION_SNAP = 180.0f/32.0f;
+const float SCALE_SNAP = 1.0f;
+
 const char USAGE_TEXT[] = ""
         "USAGE:\n"
         "- While right mouse button is held down:\n"
@@ -56,8 +61,7 @@ const char USAGE_TEXT[] = ""
         "    - Click = select/deselect object\n"
         "    - 0 = reset camera position to 0, 0, 0\n"
         "- Del = delete selected object\n"
-        "- Alt+D = duplicate selected object\n"
-        "- Alt+H = hide/show UI"
+        "- Alt+D = duplicate selected object"
 "";
 
 
@@ -76,7 +80,7 @@ int main(int argc, char* argv[]) { try {
                         bool user_model = false;
                         bool user_texture = false;
                 } data;
-                nlohmann::json extra_data = nlohmann::json::object();;
+                nlohmann::json extra_data = nlohmann::json::object();
         };
         static std::unordered_map<std::string, MapObjectRegistration> map_object_registrations; static std::vector<std::string> map_object_names; // (to keep same order as input registry in GUI)
         for (const auto& map_object : stdin_json_array) { if (!map_object.contains("name")) throw std::runtime_error("MapObject in stdin JSON array is missing key \"name\""); if (!map_object.contains("model")) throw std::runtime_error("MapObject in stdin JSON array is missing key \"model\"");
@@ -293,6 +297,25 @@ int main(int argc, char* argv[]) { try {
                         map_object_instances.pop_back();
                 }
 
+                float3 GetEuler() {
+                        float3 euler = {
+                                atan2(2*(mesh_instance->rotation[3]*mesh_instance->rotation[0] + mesh_instance->rotation[1]*mesh_instance->rotation[2]), 1 - 2*(mesh_instance->rotation[0]*mesh_instance->rotation[0] + mesh_instance->rotation[1]*mesh_instance->rotation[1])) * (float)(180/M_PI),
+                                asin(2*(mesh_instance->rotation[3]*mesh_instance->rotation[1] - mesh_instance->rotation[2]*mesh_instance->rotation[0])) * (float)(180/M_PI),
+                                atan2(2*(mesh_instance->rotation[3]*mesh_instance->rotation[2] + mesh_instance->rotation[0]*mesh_instance->rotation[1]), 1 - 2*(mesh_instance->rotation[1]*mesh_instance->rotation[1] + mesh_instance->rotation[2]*mesh_instance->rotation[2])) * (float)(180/M_PI)
+                        }; if (euler.x != euler.x) euler.x = 0.0f; if (euler.y != euler.y) euler.y = 0.0f; if (euler.z != euler.z) euler.z = 0.0f; // NaN fix
+                        return euler;
+                }
+                void SetEuler(float3 euler) { euler = linalg::clamp(euler, -180.0f, 180.0f);
+                        float4 quat = linalg::qmul(
+                                linalg::rotation_quat(float3{0, 0, 1}, euler[2]*(float)(M_PI/180)),
+                                linalg::qmul(
+                                        linalg::rotation_quat(float3{0, 1, 0}, euler[1]*(float)(M_PI/180)),
+                                        linalg::rotation_quat(float3{1, 0, 0}, euler[0]*(float)(M_PI/180))
+                                )
+                        );
+                        mesh_instance->rotation[0] = quat.x; mesh_instance->rotation[1] = quat.y; mesh_instance->rotation[2] = quat.z; mesh_instance->rotation[3] = quat.w;
+                }
+
                 void DrawInspectorContents() {
                         if (base_registration->data.user_model) {
                                 static const char button_label[] = "Model";
@@ -312,45 +335,33 @@ int main(int argc, char* argv[]) { try {
                         }
                         if (base_registration->data.position) {
                                 float previous_position[3] = {mesh_instance->position[0], mesh_instance->position[1], mesh_instance->position[2]};
-                                if (ImGui::DragFloat3("POSITION", mesh_instance->position)) {
-                                        if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT]) { // round if click-dragging
-                                                if (mesh_instance->position[0] != previous_position[0]) mesh_instance->position[0] = std::round(mesh_instance->position[0]);
-                                                if (mesh_instance->position[1] != previous_position[1]) mesh_instance->position[1] = std::round(mesh_instance->position[1]);
-                                                if (mesh_instance->position[2] != previous_position[2]) mesh_instance->position[2] = std::round(mesh_instance->position[2]);
+                                if (ImGui::DragFloat3("POSITION", mesh_instance->position, POSITION_SNAP)) {
+                                        if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !gw.key_states[GWindower::KEY_LEFT_ALT]) { // round if click-dragging
+                                                if (mesh_instance->position[0] != previous_position[0]) mesh_instance->position[0] = std::round(mesh_instance->position[0] / POSITION_SNAP) * POSITION_SNAP;
+                                                if (mesh_instance->position[1] != previous_position[1]) mesh_instance->position[1] = std::round(mesh_instance->position[1] / POSITION_SNAP) * POSITION_SNAP;
+                                                if (mesh_instance->position[2] != previous_position[2]) mesh_instance->position[2] = std::round(mesh_instance->position[2] / POSITION_SNAP) * POSITION_SNAP;
                                         }
                                 }
                         }
                         if (base_registration->data.rotation) {
-                                static const float ROTATION_FRACTION = 180.0f/32.0f;
-                                float rot_euler[3] = {
-                                        atan2(2*(mesh_instance->rotation[3]*mesh_instance->rotation[0] + mesh_instance->rotation[1]*mesh_instance->rotation[2]), 1 - 2*(mesh_instance->rotation[0]*mesh_instance->rotation[0] + mesh_instance->rotation[1]*mesh_instance->rotation[1])) * (float)(180/M_PI),
-                                        asin(2*(mesh_instance->rotation[3]*mesh_instance->rotation[1] - mesh_instance->rotation[2]*mesh_instance->rotation[0])) * (float)(180/M_PI),
-                                        atan2(2*(mesh_instance->rotation[3]*mesh_instance->rotation[2] + mesh_instance->rotation[0]*mesh_instance->rotation[1]), 1 - 2*(mesh_instance->rotation[1]*mesh_instance->rotation[1] + mesh_instance->rotation[2]*mesh_instance->rotation[2])) * (float)(180/M_PI)
-                                }; if (rot_euler[0] != rot_euler[0]) rot_euler[0] = 0.0f; if (rot_euler[1] != rot_euler[1]) rot_euler[1] = 0.0f; if (rot_euler[2] != rot_euler[2]) rot_euler[2] = 0.0f;  // (NaN fix)
-                                float previous_rot_euler[3] = {rot_euler[0], rot_euler[1], rot_euler[2]};
-                                if (ImGui::DragFloat3("ROTATION", rot_euler, ROTATION_FRACTION, -180.0f, 180.0f)) {
-                                        if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT]) { // round to multiple of target rotation fraction if click-dragging
-                                                if (rot_euler[0] != previous_rot_euler[0]) rot_euler[0] = std::round(rot_euler[0] / ROTATION_FRACTION) * ROTATION_FRACTION;
-                                                if (rot_euler[1] != previous_rot_euler[1]) rot_euler[1] = std::round(rot_euler[1] / ROTATION_FRACTION) * ROTATION_FRACTION;
-                                                if (rot_euler[2] != previous_rot_euler[2]) rot_euler[2] = std::round(rot_euler[2] / ROTATION_FRACTION) * ROTATION_FRACTION;
+                                float3 euler = GetEuler(); euler = linalg::round(euler / ROTATION_SNAP) * ROTATION_SNAP; euler += 0.0f;  // (to prevent "-0.0" in GUI)
+                                float3 previous_euler = euler;
+                                if (ImGui::DragFloat3("ROTATION", (float*)&euler, ROTATION_SNAP)) {
+                                        if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !gw.key_states[GWindower::KEY_LEFT_ALT]) { // round to multiple of target rotation fraction if click-dragging
+                                                if (euler.x != previous_euler.x) euler.x = std::round(euler.x / ROTATION_SNAP) * ROTATION_SNAP;
+                                                if (euler.y != previous_euler.y) euler.y = std::round(euler.y / ROTATION_SNAP) * ROTATION_SNAP;
+                                                if (euler.z != previous_euler.z) euler.z = std::round(euler.z / ROTATION_SNAP) * ROTATION_SNAP;
                                         }
-                                        float4 rot_quat = linalg::qmul(
-                                                linalg::rotation_quat(float3{0, 0, 1}, rot_euler[2]*(float)(M_PI/180)),
-                                                linalg::qmul(
-                                                        linalg::rotation_quat(float3{0, 1, 0}, rot_euler[1]*(float)(M_PI/180)),
-                                                        linalg::rotation_quat(float3{1, 0, 0}, rot_euler[0]*(float)(M_PI/180))
-                                                )
-                                        );
-                                        mesh_instance->rotation[0] = rot_quat.x; mesh_instance->rotation[1] = rot_quat.y; mesh_instance->rotation[2] = rot_quat.z; mesh_instance->rotation[3] = rot_quat.w;
+                                        SetEuler(euler);
                                 }
                         }
                         if (base_registration->data.scale) {
                                 float previous_scale[3] = {mesh_instance->scale[0], mesh_instance->scale[1], mesh_instance->scale[2]};
-                                if (ImGui::DragFloat3("SCALE", mesh_instance->scale)) {
-                                        if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT]) { // round if click-dragging
-                                                if (mesh_instance->scale[0] != previous_scale[0]) mesh_instance->scale[0] = std::round(mesh_instance->scale[0]);
-                                                if (mesh_instance->scale[1] != previous_scale[1]) mesh_instance->scale[1] = std::round(mesh_instance->scale[1]);
-                                                if (mesh_instance->scale[2] != previous_scale[2]) mesh_instance->scale[2] = std::round(mesh_instance->scale[2]);
+                                if (ImGui::DragFloat3("SCALE", mesh_instance->scale, SCALE_SNAP)) {
+                                        if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !gw.key_states[GWindower::KEY_LEFT_ALT]) { // round if click-dragging
+                                                if (mesh_instance->scale[0] != previous_scale[0]) mesh_instance->scale[0] = std::round(mesh_instance->scale[0] / SCALE_SNAP) * SCALE_SNAP;
+                                                if (mesh_instance->scale[1] != previous_scale[1]) mesh_instance->scale[1] = std::round(mesh_instance->scale[1] / SCALE_SNAP) * SCALE_SNAP;
+                                                if (mesh_instance->scale[2] != previous_scale[2]) mesh_instance->scale[2] = std::round(mesh_instance->scale[2] / SCALE_SNAP) * SCALE_SNAP;
                                         }
                                 }
                         }
@@ -486,7 +497,9 @@ int main(int argc, char* argv[]) { try {
 
         glClearColor(0.0, 0.0, 0.0, 1.0);
         GFramePacer gfp; gfp.target_frametime_ms = 1.0;  // (frame limiting itself not needed because using v-sync (and wait-until-input), using lib for other frame-pacing-related benefits)
-        while (gw.Update(false, 0.0, true)) {
+        for (;;) { // MAIN LOOP
+                gw.Update(false, 0.0, true);
+
                 double delta_time = gfp.Wait();
 
                 if (gw.mouse_button_states[GWindower::MOUSEBUTTON_RIGHT]) { if (gw.locked_mouse == false) { gw.locked_mouse = true; gw.mouse_x = gw.window_width/2; gw.mouse_y = gw.window_height/2; }
@@ -533,14 +546,52 @@ int main(int argc, char* argv[]) { try {
                         } else if (!gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT]) _obj_pick_ray_casted = false;
                 } else gw.locked_mouse = false;
 
-                static bool _cloned = false;
-                if (gw.key_states[GWindower::KEY_LEFT_ALT] && gw.key_states[GWindower::KEY_D] && selected_map_object != nullptr && !_cloned) { _cloned = true;
-                        selected_map_object = selected_map_object->Clone();
-                } else if (!gw.key_states[GWindower::KEY_D]) _cloned = false;
+                if (selected_map_object != nullptr) {
+                        static bool _cloned = false;
+                        if (gw.key_states[GWindower::KEY_LEFT_ALT] && gw.key_states[GWindower::KEY_D] && selected_map_object != nullptr && !_cloned) { _cloned = true;
+                                selected_map_object = selected_map_object->Clone();
+                        } else if (!gw.key_states[GWindower::KEY_D]) _cloned = false;
 
-                if (gw.key_states[GWindower::KEY_DELETE] && selected_map_object != nullptr) {
-                        selected_map_object->Delete();
-                        selected_map_object = nullptr;
+                        if (gw.key_states[GWindower::KEY_DELETE] && selected_map_object != nullptr) {
+                                selected_map_object->Delete();
+                                selected_map_object = nullptr;
+                        }
+
+                        const float camera_yaw_offsetted_45 = (uint16_t)(gr3d.camera_yaw + USHRT_MAX/8);  // (re-casting to ushort to force ushort overflow)
+
+                        static bool _arrow_up_move_pressed = false;
+                        if (gw.key_states[GWindower::KEY_UP] && !_arrow_up_move_pressed) { _arrow_up_move_pressed = true;
+                                if (gw.key_states[GWindower::KEY_LEFT_SHIFT]) {
+                                        float3 euler = selected_map_object->GetEuler();
+                                        if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) euler.x += ROTATION_SNAP;
+                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) euler.z += ROTATION_SNAP;
+                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*2 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*3) euler.x -= ROTATION_SNAP;
+                                        else euler.z -= ROTATION_SNAP;
+                                        selected_map_object->SetEuler(euler);
+                                }
+                                else if (gw.key_states[GWindower::KEY_LEFT_ALT]) selected_map_object->mesh_instance->scale[1] += SCALE_SNAP / 100.0f;
+                                else selected_map_object->mesh_instance->position[1] += POSITION_SNAP / 100.0f;
+                        } else if (!gw.key_states[GWindower::KEY_UP]) _arrow_up_move_pressed = false;
+                        static bool _arrow_down_move_pressed = false;
+                        if (gw.key_states[GWindower::KEY_DOWN] && !_arrow_down_move_pressed) { _arrow_down_move_pressed = true;
+                                if (gw.key_states[GWindower::KEY_LEFT_SHIFT]) {
+                                        float3 euler = selected_map_object->GetEuler();
+                                        if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) euler.x -= ROTATION_SNAP;
+                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) euler.z -= ROTATION_SNAP;
+                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*2 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*3) euler.x += ROTATION_SNAP;
+                                        else euler.z += ROTATION_SNAP;
+                                        selected_map_object->SetEuler(euler);
+                                }
+                                else if (gw.key_states[GWindower::KEY_LEFT_ALT]) selected_map_object->mesh_instance->scale[1] -= SCALE_SNAP / 100.0f;
+                                else selected_map_object->mesh_instance->position[1] -= POSITION_SNAP / 100.0f;
+                        } else if (!gw.key_states[GWindower::KEY_DOWN]) _arrow_down_move_pressed = false;
+                        static bool _arrow_right_move_pressed = false;
+                        if (gw.key_states[GWindower::KEY_RIGHT] && !_arrow_right_move_pressed) { _arrow_right_move_pressed = true;
+                                if (gw.key_states[GWindower::KEY_LEFT_SHIFT]) { float3 euler = selected_map_object->GetEuler(); euler.y -= ROTATION_SNAP; selected_map_object->SetEuler(euler); }
+                                // TODO:
+                                // else if (gw.key_states[GWindower::KEY_LEFT_ALT]) selected_map_object->mesh_instance->scale[1] -= SCALE_SNAP / 100.0f;
+                                // else selected_map_object->mesh_instance->position[1] -= POSITION_SNAP / 100.0f;
+                        } else if (!gw.key_states[GWindower::KEY_RIGHT]) _arrow_right_move_pressed = false;
                 }
 
                 static bool show_ui = true;
