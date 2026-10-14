@@ -22,9 +22,6 @@ add_subdirectory("libs/libGRenderer3D")
 set(GLINERENDERER3D_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
 add_subdirectory("libs/libGLineRenderer3D")
 
-set(GRENDERER2D_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
-add_subdirectory("libs/libGRenderer2D")
-
 set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
 add_subdirectory("libs/json")
 
@@ -51,7 +48,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         GWindower
         GRenderer3D
         GLineRenderer3D
-        GRenderer2D
         nlohmann_json
         dear_imgui
         nfd

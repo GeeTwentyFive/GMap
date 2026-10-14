@@ -32,7 +32,6 @@ using namespace linalg::aliases;
 #include <imgui/backends/imgui_impl_glfw.h>
 #include <imgui/backends/imgui_impl_opengl3.h>
 #include <imgui/misc/cpp/imgui_stdlib.h>
-#include <GRenderer2D.hpp>
 #include <nfd.h>
 static inline void _NFD_SetWaylandDisplay(void* wayland_display) {  // (to avoid using #ifdef below (since you can't stack C macros on the same lines as source code...))
 #ifdef __linux__
@@ -480,17 +479,6 @@ int main(int argc, char* argv[]) { try {
 
         ImGui::CreateContext(); ImGui_ImplGlfw_InitForOpenGL((GLFWwindow*)(gw._glfwWindow), true); ImGui_ImplOpenGL3_Init("#version 460 core"); ImGui::GetIO().ConfigFlags |= (ImGuiConfigFlags_NoMouseCursorChange); ImGui::GetIO().IniFilename = NULL;
 
-        GRenderer2D gr2d;
-
-        static const uint32_t CROSSHAIR_TEXTURE[] = {
-                0x00000000, 0xFF000000, 0xFF000000, 0xFF000000, 0x00000000,
-                0xFF000000, 0xFF000000, 0xFFFFFFFF, 0xFF000000, 0xFF000000,
-                0xFF000000, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFF000000,
-                0xFF000000, 0xFF000000, 0xFFFFFFFF, 0xFF000000, 0xFF000000,
-                0x00000000, 0xFF000000, 0xFF000000, 0xFF000000, 0x00000000
-        };
-        GRenderer2D::SpriteInstance* crosshair_sprite = gr2d.AddSprite(gr2d.CreateSprite(CROSSHAIR_TEXTURE, 5, 5)); crosshair_sprite->z_depth = -0.99f;
-
         GLineRenderer3D glr3d;
 
         MapObjectInstance* selected_map_object = nullptr;
@@ -523,31 +511,48 @@ int main(int argc, char* argv[]) { try {
                         gr3d.camera_pos[2] += -move_dir.y * camera_move_speed * delta_time;
 
                         if (gw.key_states[GWindower::KEY_ZERO]) { gr3d.camera_pos[0] = 0; gr3d.camera_pos[1] = 0; gr3d.camera_pos[2] = 0; }
-
-                        static bool _obj_pick_ray_casted = false;
-                        if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !_obj_pick_ray_casted) { _obj_pick_ray_casted = true;
-                                float3 ray_dir{
-                                        cosf((gr3d.camera_yaw*(2*M_PI/65536))-M_PI/2) * cosf(gr3d.camera_pitch*(2*M_PI/65536)),
-                                        sinf(gr3d.camera_pitch*(2*M_PI/65536)),
-                                        sinf((gr3d.camera_yaw*(2*M_PI/65536))-M_PI/2) * cosf(gr3d.camera_pitch*(2*M_PI/65536))
-                                };
-                                float closest_hit_map_object_distance = FLT_MAX;
-                                for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) {
-                                        gcollision2::AABB map_object_instance_aabb = map_object_instance->AABB();
-                                        if (map_object_instance_aabb.ContainsPoint(float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]})) continue;  // (skip if camera is inside of obj (to make it so you can select objs inside of other objs))
-                                        gcollision2::RayHitExtraInfo extra_hit_info;
-                                        if (gcollision2::IntersectRayAABB(
-                                                float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]},
-                                                ray_dir,
-                                                map_object_instance_aabb,
-                                                &extra_hit_info
-                                        )) if (extra_hit_info.distance < closest_hit_map_object_distance) { closest_hit_map_object_distance = extra_hit_info.distance;
-                                                selected_map_object = map_object_instance.get();
-                                        }
-                                }
-                                if (closest_hit_map_object_distance == FLT_MAX) selected_map_object = nullptr;  // (none hit; deselect)
-                        } else if (!gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT]) _obj_pick_ray_casted = false;
                 }
+
+                static bool _obj_pick_ray_casted = false;
+                if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !ImGui::GetIO().WantCaptureMouse && !_obj_pick_ray_casted) { _obj_pick_ray_casted = true;
+                        float3 _camera_pos = {gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]};
+                        float4x4 view = linalg::lookat_matrix(
+                                _camera_pos,
+                                _camera_pos + linalg::qrot(
+                                        linalg::qmul(
+                                                linalg::rotation_quat(float3{0, 1, 0}, -(float)(gr3d.camera_yaw*(2*M_PI/65536))),
+                                                linalg::rotation_quat(float3{1, 0, 0}, (float)(gr3d.camera_pitch*(2*M_PI/65536)))
+                                        ),
+                                        float3{0, 0, -1}
+                                ),
+                                float3{0, 1, 0}
+                        );
+                        float4x4 proj = linalg::perspective_matrix(gr3d.camera_fov, ((float)gw.window_width)/((float)gw.window_height), gr3d.camera_near, gr3d.camera_far, linalg::fwd_axis::neg_z, linalg::z_range::zero_to_one);
+                        float4x4 viewProjection = linalg::mul(proj, view);  // NOTE: Flip multiplication order in not-OpenGL
+                        float4x4 inverse_viewProjection = linalg::inverse(viewProjection);
+                        float normalized_device_x = (2.0f*gw.mouse_x)/(float)gw.window_width - 1.0f;
+                        float normalized_device_y = 1.0f - (2.0f*gw.mouse_y)/(float)gw.window_height;
+                        float4 near_quat = linalg::mul(inverse_viewProjection, float4{normalized_device_x, normalized_device_y, 0.0f, 1.0f});
+                        float3 near_point = {near_quat.x/near_quat.w, near_quat.y/near_quat.w, near_quat.z/near_quat.w};
+                        float4 far_quat = linalg::mul(inverse_viewProjection, float4{normalized_device_x, normalized_device_y, 1.0f, 1.0f});
+                        float3 far_point = {far_quat.x/far_quat.w, far_quat.y/far_quat.w, far_quat.z/far_quat.w};
+                        float3 ray_dir = linalg::normalize(far_point - near_point);
+                        float closest_hit_map_object_distance = FLT_MAX;
+                        for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) {
+                                gcollision2::AABB map_object_instance_aabb = map_object_instance->AABB();
+                                if (map_object_instance_aabb.ContainsPoint(float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]})) continue;  // (skip if camera is inside of obj (to make it so you can select objs inside of other objs))
+                                gcollision2::RayHitExtraInfo extra_hit_info;
+                                if (gcollision2::IntersectRayAABB(
+                                        float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]},
+                                        ray_dir,
+                                        map_object_instance_aabb,
+                                        &extra_hit_info
+                                )) if (extra_hit_info.distance < closest_hit_map_object_distance) { closest_hit_map_object_distance = extra_hit_info.distance;
+                                        selected_map_object = map_object_instance.get();
+                                }
+                        }
+                        if (closest_hit_map_object_distance == FLT_MAX) selected_map_object = nullptr;  // (none hit; deselect)
+                } else if (!gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT]) _obj_pick_ray_casted = false;
 
                 if (selected_map_object != nullptr) {
                         static bool _cloned = false;
@@ -694,15 +699,8 @@ int main(int argc, char* argv[]) { try {
                         glClear(GL_DEPTH_BUFFER_BIT);
                         glr3d.camera_pos[0] = gr3d.camera_pos[0]; glr3d.camera_pos[1] = gr3d.camera_pos[1]; glr3d.camera_pos[2] = gr3d.camera_pos[2]; glr3d.camera_yaw = gr3d.camera_yaw; glr3d.camera_pitch = gr3d.camera_pitch; glr3d.camera_fov = gr3d.camera_fov; glr3d.camera_near = gr3d.camera_near; glr3d.camera_far = gr3d.camera_far;
                         glr3d.DrawFrame(gw.window_width, gw.window_height);
-                        if (gw.locked_mouse) {
-                                glClear(GL_DEPTH_BUFFER_BIT);
-                                crosshair_sprite->size[0] = gw.window_height/180.0; crosshair_sprite->size[1] = gw.window_height/180.0;
-                                crosshair_sprite->position[0] = (gw.window_width/2.0 - crosshair_sprite->size[0]/2.0); crosshair_sprite->position[1] = (gw.window_height/2.0 - crosshair_sprite->size[1]/2.0);
-                                gr2d.DrawFrame(gw.window_width, gw.window_height);
-                        }
                         glClear(GL_DEPTH_BUFFER_BIT);
                         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
                 }
         }
         ImGui_ImplOpenGL3_Shutdown(); ImGui_ImplGlfw_Shutdown(); ImGui::DestroyContext(); NFD_Quit();
