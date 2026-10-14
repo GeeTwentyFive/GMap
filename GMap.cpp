@@ -697,35 +697,21 @@ int main(int argc, char* argv[]) { try {
                                                 gcollision2::AABB* aabb;
                                                 const ImGuizmo::OPERATION operation = (ImGuizmo::OPERATION)(
                                                         (selected_map_object->base_registration->data.position ? ImGuizmo::OPERATION::TRANSLATE : 0) |
-                                                        (selected_map_object->base_registration->data.rotation ? ImGuizmo::OPERATION::ROTATE : 0) |
                                                         (selected_map_object->base_registration->data.scale ? ImGuizmo::OPERATION::SCALE : 0) |
                                                         ((selected_map_object->base_registration->data.scale && selected_map_object->base_registration->data.position) ? ImGuizmo::OPERATION::BOUNDS : 0)
                                                 );
                                                 if (operation & ImGuizmo::OPERATION::BOUNDS) aabb = GetMeshAABBFromFile(selected_map_object->base_registration->model);
                                                 const bool snap = !gw.key_states[GWindower::KEY_LEFT_ALT]; static const float SNAP_AMOUNT[3] = {POSITION_SNAP, POSITION_SNAP, POSITION_SNAP};
-                                                float4x4 delta{};
                                                 ImGuizmo::Manipulate((float*)&view, (float*)&proj, operation, ImGuizmo::MODE::WORLD,
-                                                        (float*)&transform, (float*)&delta, (snap ? SNAP_AMOUNT : NULL),
+                                                        (float*)&transform, NULL, (snap ? SNAP_AMOUNT : NULL),
                                                         (operation & ImGuizmo::OPERATION::BOUNDS) ? (float*)aabb : NULL, (snap ? SNAP_AMOUNT : NULL)
                                                 );
                                                 if (ImGuizmo::IsUsing()) {
                                                         if (selected_map_object->base_registration->data.position) selected_map_object->mesh_instance->position[0] = transform.row(0).w; selected_map_object->mesh_instance->position[1] = transform.row(1).w; selected_map_object->mesh_instance->position[2] = transform.row(2).w;
-                                                        if (selected_map_object->base_registration->data.rotation) {
-                                                                float4 delta_quat = linalg::rotation_quat(float3x3{delta.row(0).xyz(), delta.row(1).xyz(), delta.row(2).xyz()});
-                                                                float3 delta_euler = {
-                                                                        atan2(2*(delta_quat[3]*delta_quat[0] + delta_quat[1]*delta_quat[2]), 1 - 2*(delta_quat[0]*delta_quat[0] + delta_quat[1]*delta_quat[1])) * (float)(180/M_PI),
-                                                                        asin(2*(delta_quat[3]*delta_quat[1] - delta_quat[2]*delta_quat[0])) * (float)(180/M_PI),
-                                                                        atan2(2*(delta_quat[3]*delta_quat[2] + delta_quat[0]*delta_quat[1]), 1 - 2*(delta_quat[1]*delta_quat[1] + delta_quat[2]*delta_quat[2])) * (float)(180/M_PI)
-                                                                }; if (delta_euler.x != delta_euler.x) delta_euler.x = 0.0f; if (delta_euler.y != delta_euler.y) delta_euler.y = 0.0f; if (delta_euler.z != delta_euler.z) delta_euler.z = 0.0f; // NaN fix
-                                                                float3 new_euler = selected_map_object->GetEuler() + (-delta_euler);
-                                                                if (snap) { // TODO
-                                                                        if (std::abs(delta_euler.x) > 0.01f) new_euler.x = std::round(new_euler.x / ROTATION_SNAP) * ROTATION_SNAP;
-                                                                        if (std::abs(delta_euler.y) > 0.01f) new_euler.y = std::round(new_euler.y / ROTATION_SNAP) * ROTATION_SNAP;
-                                                                        if (std::abs(delta_euler.z) > 0.01f) new_euler.z = std::round(new_euler.z / ROTATION_SNAP) * ROTATION_SNAP;
-                                                                }
-                                                                selected_map_object->SetEuler(new_euler);
-                                                        }
                                                         if (selected_map_object->base_registration->data.scale) { selected_map_object->mesh_instance->scale[0] = linalg::length(float3{transform.row(0).x, transform.row(1).x, transform.row(2).x}); selected_map_object->mesh_instance->scale[1] = linalg::length(float3{transform.row(0).y, transform.row(1).y, transform.row(2).y}); selected_map_object->mesh_instance->scale[2] = linalg::length(float3{transform.row(0).z, transform.row(1).z, transform.row(2).z}); }
+                                                        if (selected_map_object->base_registration->data.scale && selected_map_object->base_registration->data.position) {
+                                                                // TODO
+                                                        }
                                                 }
                                         }
                                 }
