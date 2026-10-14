@@ -503,7 +503,7 @@ int main(int argc, char* argv[]) { try {
                 if (gw.mouse_button_states[GWindower::MOUSEBUTTON_RIGHT]) gw.locked_mouse = true;
                 else gw.locked_mouse = false;
 
-                gw.Update(false, 0.0, true);
+                bool window_should_close = !gw.Update(false, 0.0, true);
 
                 if (gw.locked_mouse) {
                         gr3d.camera_yaw += gw.mouse_x * CAMERA_SENSITIVITY;
@@ -633,6 +633,8 @@ int main(int argc, char* argv[]) { try {
                 static bool _show_quit_dialog_toggled = false;
                 if (gw.key_states[GWindower::KEY_ESCAPE] && !_show_quit_dialog_toggled) { _show_quit_dialog_toggled = true; show_quit_dialog = !show_quit_dialog; }
                 else if (!gw.key_states[GWindower::KEY_ESCAPE]) _show_quit_dialog_toggled = false;
+
+                if (window_should_close) show_quit_dialog = true;
 
                 if (show_ui) {
                         if (selected_map_object != nullptr) {
