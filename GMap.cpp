@@ -636,6 +636,8 @@ int main(int argc, char* argv[]) { try {
 
                 if (window_should_close) show_quit_dialog = true;
 
+                if (show_quit_dialog) show_ui = true;
+
                 if (show_ui) {
                         if (selected_map_object != nullptr) {
                                 gcollision2::AABB aabb = selected_map_object->AABB();
@@ -692,10 +694,12 @@ int main(int argc, char* argv[]) { try {
                         glClear(GL_DEPTH_BUFFER_BIT);
                         glr3d.camera_pos[0] = gr3d.camera_pos[0]; glr3d.camera_pos[1] = gr3d.camera_pos[1]; glr3d.camera_pos[2] = gr3d.camera_pos[2]; glr3d.camera_yaw = gr3d.camera_yaw; glr3d.camera_pitch = gr3d.camera_pitch; glr3d.camera_fov = gr3d.camera_fov; glr3d.camera_near = gr3d.camera_near; glr3d.camera_far = gr3d.camera_far;
                         glr3d.DrawFrame(gw.window_width, gw.window_height);
-                        glClear(GL_DEPTH_BUFFER_BIT);
-                        crosshair_sprite->size[0] = gw.window_height/180.0; crosshair_sprite->size[1] = gw.window_height/180.0;
-                        crosshair_sprite->position[0] = (gw.window_width/2.0 - crosshair_sprite->size[0]/2.0); crosshair_sprite->position[1] = (gw.window_height/2.0 - crosshair_sprite->size[1]/2.0);
-                        gr2d.DrawFrame(gw.window_width, gw.window_height);
+                        if (gw.locked_mouse) {
+                                glClear(GL_DEPTH_BUFFER_BIT);
+                                crosshair_sprite->size[0] = gw.window_height/180.0; crosshair_sprite->size[1] = gw.window_height/180.0;
+                                crosshair_sprite->position[0] = (gw.window_width/2.0 - crosshair_sprite->size[0]/2.0); crosshair_sprite->position[1] = (gw.window_height/2.0 - crosshair_sprite->size[1]/2.0);
+                                gr2d.DrawFrame(gw.window_width, gw.window_height);
+                        }
                         glClear(GL_DEPTH_BUFFER_BIT);
                         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
