@@ -498,11 +498,14 @@ int main(int argc, char* argv[]) { try {
         glClearColor(0.0, 0.0, 0.0, 1.0);
         GFramePacer gfp; gfp.target_frametime_ms = 1.0;  // (frame limiting itself not needed because using v-sync (and wait-until-input), using lib for other frame-pacing-related benefits)
         for (;;) { // MAIN LOOP
-                gw.Update(false, 0.0, true);
-
                 double delta_time = gfp.Wait();
 
-                if (gw.mouse_button_states[GWindower::MOUSEBUTTON_RIGHT]) { if (gw.locked_mouse == false) { gw.locked_mouse = true; gw.mouse_x = gw.window_width/2; gw.mouse_y = gw.window_height/2; }
+                if (gw.mouse_button_states[GWindower::MOUSEBUTTON_RIGHT]) gw.locked_mouse = true;
+                else gw.locked_mouse = false;
+
+                gw.Update(false, 0.0, true);
+
+                if (gw.locked_mouse) {
                         gr3d.camera_yaw += gw.mouse_x * CAMERA_SENSITIVITY;
                         gr3d.camera_pitch += gw.mouse_y * CAMERA_SENSITIVITY;
                         static int camera_move_speed = STARTING_CAMERA_MOVE_SPEED;
@@ -544,7 +547,7 @@ int main(int argc, char* argv[]) { try {
                                 }
                                 if (closest_hit_map_object_distance == FLT_MAX) selected_map_object = nullptr;  // (none hit; deselect)
                         } else if (!gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT]) _obj_pick_ray_casted = false;
-                } else gw.locked_mouse = false;
+                }
 
                 if (selected_map_object != nullptr) {
                         static bool _cloned = false;
@@ -678,7 +681,7 @@ int main(int argc, char* argv[]) { try {
                                                 if (ImGui::Button("Cancel")) show_quit_dialog = false;
                                         } ImGui::End();
                                 }
-                        } ImGui::Render(); if (gw.mouse_button_states[GWindower::MOUSEBUTTON_RIGHT]) ImGui::SetWindowFocus(); // (unfocus GUI if controlling camera)
+                        } ImGui::Render(); if (gw.locked_mouse) ImGui::SetWindowFocus(); // (unfocus GUI if controlling camera)
                 }
 
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); glViewport(0, 0, gw.window_width, gw.window_height);  // (leaving this inside of the mainloop in case I want to support windowed operation in the future)
