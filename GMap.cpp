@@ -680,12 +680,13 @@ int main(int argc, char* argv[]) { try {
                                         ImGuizmo::BeginFrame(); ImGuizmo::SetRect(0, 0, gw.window_width, gw.window_height);
                                         if (!selected_map_object_changed) {  // (skip 1 frame after MapObject selection to prevent premature gizmo input)
                                                 float3 _camera_pos = {gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]};
+                                                uint16_t _more_clamped_camera_pitch = (gr3d.camera_pitch < 16386) ? 16386 : (gr3d.camera_pitch > 49150) ? 49150 : gr3d.camera_pitch;  // (to fix 90-degree vertical gizmo rendering bug)
                                                 float4x4 view = linalg::lookat_matrix(
                                                         _camera_pos,
                                                         _camera_pos + linalg::qrot(
                                                                 linalg::qmul(
                                                                         linalg::rotation_quat(float3{0, 1, 0}, -(float)(gr3d.camera_yaw*(2*M_PI/65536))),
-                                                                        linalg::rotation_quat(float3{1, 0, 0}, (float)(gr3d.camera_pitch*(2*M_PI/65536)))
+                                                                        linalg::rotation_quat(float3{1, 0, 0}, (float)(_more_clamped_camera_pitch*(2*M_PI/65536)))
                                                                 ),
                                                                 float3{0, 0, -1}
                                                         ),
@@ -707,7 +708,11 @@ int main(int argc, char* argv[]) { try {
                                                         (operation & ImGuizmo::OPERATION::BOUNDS) ? (float*)aabb : NULL, (snap ? SNAP_AMOUNT : NULL)
                                                 );
                                                 if (ImGuizmo::IsUsing()) {
-                                                        // TODO
+                                                        if (selected_map_object->base_registration->data.position) selected_map_object->mesh_instance->position[0] = transform.row(0).w; selected_map_object->mesh_instance->position[1] = transform.row(1).w; selected_map_object->mesh_instance->position[2] = transform.row(2).w;
+                                                        if (selected_map_object->base_registration->data.rotation) {
+                                                                // TODO
+                                                        }
+                                                        if (selected_map_object->base_registration->data.scale) { selected_map_object->mesh_instance->scale[0] = linalg::length(float3{transform.row(0).x, transform.row(1).x, transform.row(2).x}); selected_map_object->mesh_instance->scale[1] = linalg::length(float3{transform.row(0).y, transform.row(1).y, transform.row(2).y}); selected_map_object->mesh_instance->scale[2] = linalg::length(float3{transform.row(0).z, transform.row(1).z, transform.row(2).z}); }
                                                 }
                                         }
                                 }
