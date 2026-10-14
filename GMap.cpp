@@ -517,7 +517,7 @@ int main(int argc, char* argv[]) { try {
                 }
 
                 static bool _obj_pick_ray_casted = false;
-                if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !ImGui::GetIO().WantCaptureMouse && !_obj_pick_ray_casted) { _obj_pick_ray_casted = true;
+                if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !gw.locked_mouse && !ImGui::GetIO().WantCaptureMouse && !_obj_pick_ray_casted) { _obj_pick_ray_casted = true;
                         float3 _camera_pos = {gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]};
                         float4x4 view = linalg::lookat_matrix(
                                 _camera_pos,
@@ -692,31 +692,19 @@ int main(int argc, char* argv[]) { try {
                                                         float3{0, 1, 0}
                                                 );
                                                 float4x4 proj = linalg::perspective_matrix(gr3d.camera_fov, ((float)gw.window_width)/((float)gw.window_height), gr3d.camera_near, gr3d.camera_far, linalg::fwd_axis::neg_z, linalg::z_range::zero_to_one);
-                                                float4x4 matrix = linalg::mul(
-                                                        linalg::translation_matrix(float3{
-                                                                selected_map_object->mesh_instance->position[0],
-                                                                selected_map_object->mesh_instance->position[1],
-                                                                selected_map_object->mesh_instance->position[2]
-                                                        }),
-                                                        linalg::mul(
-                                                                linalg::rotation_matrix(float4{
-                                                                        selected_map_object->mesh_instance->rotation[0],
-                                                                        selected_map_object->mesh_instance->rotation[1],
-                                                                        selected_map_object->mesh_instance->rotation[2],
-                                                                        selected_map_object->mesh_instance->rotation[3]
-                                                                }),
-                                                                linalg::scaling_matrix(float3{
-                                                                        selected_map_object->mesh_instance->scale[0],
-                                                                        selected_map_object->mesh_instance->scale[1],
-                                                                        selected_map_object->mesh_instance->scale[2]
-                                                                })
-                                                        )
+                                                float4x4 transform = selected_map_object->Transform();
+                                                gcollision2::AABB aabb;
+                                                const ImGuizmo::OPERATION operation = (ImGuizmo::OPERATION)(
+                                                        (selected_map_object->base_registration->data.position ? ImGuizmo::OPERATION::TRANSLATE : 0) |
+                                                        (selected_map_object->base_registration->data.rotation ? ImGuizmo::OPERATION::ROTATE : 0) |
+                                                        (selected_map_object->base_registration->data.scale ? ImGuizmo::OPERATION::SCALE : 0) |
+                                                        ((selected_map_object->base_registration->data.scale && selected_map_object->base_registration->data.position) ? ImGuizmo::OPERATION::BOUNDS : 0)
                                                 );
-                                                gcollision2::AABB aabb = selected_map_object->AABB();
+                                                if (operation & ImGuizmo::OPERATION::BOUNDS) aabb = selected_map_object->AABB();
                                                 const bool snap = !gw.key_states[GWindower::KEY_LEFT_ALT]; static const float SNAP_AMOUNT[3] = {POSITION_SNAP, POSITION_SNAP, POSITION_SNAP};
-                                                ImGuizmo::Manipulate((float*)&view, (float*)&proj, (ImGuizmo::OPERATION::TRANSLATE | ImGuizmo::OPERATION::ROTATE | ImGuizmo::OPERATION::SCALE | ImGuizmo::OPERATION::BOUNDS), ImGuizmo::MODE::WORLD,
-                                                        (float*)&matrix, NULL, (snap ? SNAP_AMOUNT : NULL),
-                                                        (float*)&aabb, (snap ? SNAP_AMOUNT : NULL)
+                                                ImGuizmo::Manipulate((float*)&view, (float*)&proj, operation, ImGuizmo::MODE::WORLD,
+                                                        (float*)&transform, NULL, (snap ? SNAP_AMOUNT : NULL),
+                                                        (operation & ImGuizmo::OPERATION::BOUNDS) ? (float*)&aabb : NULL, (snap ? SNAP_AMOUNT : NULL)
                                                 );
                                                 if (ImGuizmo::IsUsing()) {
                                                         // TODO
