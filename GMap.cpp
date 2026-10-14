@@ -247,7 +247,7 @@ int main(int argc, char* argv[]) { try {
                         );
                 }
 
-                gcollision2::AABB AABB() {
+                gcollision2::AABB WorldAABB() {
                         gcollision2::AABB aabb{{FLT_MAX, FLT_MAX, FLT_MAX}, {-FLT_MAX, -FLT_MAX, -FLT_MAX}};
                         gcollision2::AABB* mesh_aabb = (user_model != "") ? GetMeshAABBFromFile(user_model) : GetMeshAABBFromFile(base_registration->model);
                         float3 mesh_aabb_cuboid[8]{
@@ -542,7 +542,7 @@ int main(int argc, char* argv[]) { try {
                         float3 ray_dir = linalg::normalize(far_point - near_point);
                         float closest_hit_map_object_distance = FLT_MAX;
                         for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) {
-                                gcollision2::AABB map_object_instance_aabb = map_object_instance->AABB();
+                                gcollision2::AABB map_object_instance_aabb = map_object_instance->WorldAABB();
                                 if (map_object_instance_aabb.ContainsPoint(float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]})) continue;  // (skip if camera is inside of obj (to make it so you can select objs inside of other objs))
                                 gcollision2::RayHitExtraInfo extra_hit_info;
                                 if (gcollision2::IntersectRayAABB(
@@ -648,7 +648,7 @@ int main(int argc, char* argv[]) { try {
 
                 if (show_ui) {
                         if (selected_map_object != nullptr) {
-                                gcollision2::AABB aabb = selected_map_object->AABB();
+                                gcollision2::AABB aabb = selected_map_object->WorldAABB();
                                 glr3d.DrawLine(aabb.min.x, aabb.min.y, aabb.min.z, aabb.min.x, aabb.max.y, aabb.min.z);
                                 glr3d.DrawLine(aabb.min.x, aabb.max.y, aabb.min.z, aabb.max.x, aabb.max.y, aabb.min.z);
                                 glr3d.DrawLine(aabb.max.x, aabb.max.y, aabb.min.z, aabb.max.x, aabb.min.y, aabb.min.z);
@@ -693,18 +693,18 @@ int main(int argc, char* argv[]) { try {
                                                 );
                                                 float4x4 proj = linalg::perspective_matrix(gr3d.camera_fov, ((float)gw.window_width)/((float)gw.window_height), gr3d.camera_near, gr3d.camera_far, linalg::fwd_axis::neg_z, linalg::z_range::zero_to_one);
                                                 float4x4 transform = selected_map_object->Transform();
-                                                gcollision2::AABB aabb;
+                                                gcollision2::AABB* aabb;
                                                 const ImGuizmo::OPERATION operation = (ImGuizmo::OPERATION)(
                                                         (selected_map_object->base_registration->data.position ? ImGuizmo::OPERATION::TRANSLATE : 0) |
                                                         (selected_map_object->base_registration->data.rotation ? ImGuizmo::OPERATION::ROTATE : 0) |
                                                         (selected_map_object->base_registration->data.scale ? ImGuizmo::OPERATION::SCALE : 0) |
                                                         ((selected_map_object->base_registration->data.scale && selected_map_object->base_registration->data.position) ? ImGuizmo::OPERATION::BOUNDS : 0)
                                                 );
-                                                if (operation & ImGuizmo::OPERATION::BOUNDS) aabb = selected_map_object->AABB();
+                                                if (operation & ImGuizmo::OPERATION::BOUNDS) aabb = GetMeshAABBFromFile(selected_map_object->base_registration->model);
                                                 const bool snap = !gw.key_states[GWindower::KEY_LEFT_ALT]; static const float SNAP_AMOUNT[3] = {POSITION_SNAP, POSITION_SNAP, POSITION_SNAP};
                                                 ImGuizmo::Manipulate((float*)&view, (float*)&proj, operation, ImGuizmo::MODE::WORLD,
                                                         (float*)&transform, NULL, (snap ? SNAP_AMOUNT : NULL),
-                                                        (operation & ImGuizmo::OPERATION::BOUNDS) ? (float*)&aabb : NULL, (snap ? SNAP_AMOUNT : NULL)
+                                                        (operation & ImGuizmo::OPERATION::BOUNDS) ? (float*)aabb : NULL, (snap ? SNAP_AMOUNT : NULL)
                                                 );
                                                 if (ImGuizmo::IsUsing()) {
                                                         // TODO
