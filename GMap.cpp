@@ -32,6 +32,7 @@ using namespace linalg::aliases;
 #include <imgui/backends/imgui_impl_glfw.h>
 #include <imgui/backends/imgui_impl_opengl3.h>
 #include <imgui/misc/cpp/imgui_stdlib.h>
+#include <ImGuizmo.h>
 #include <nfd.h>
 static inline void _NFD_SetWaylandDisplay(void* wayland_display) {  // (to avoid using #ifdef below (since you can't stack C macros on the same lines as source code...))
 #ifdef __linux__
@@ -482,6 +483,8 @@ int main(int argc, char* argv[]) { try {
         GLineRenderer3D glr3d;
 
         MapObjectInstance* selected_map_object = nullptr;
+        bool selected_map_object_changed = false;
+        auto SetSelectedMapObject = [&](MapObjectInstance* target = nullptr) { selected_map_object = target; selected_map_object_changed = true; };
 
         glClearColor(0.0, 0.0, 0.0, 1.0);
         GFramePacer gfp; gfp.target_frametime_ms = 1.0;  // (frame limiting itself not needed because using v-sync (and wait-until-input), using lib for other frame-pacing-related benefits)
@@ -548,7 +551,7 @@ int main(int argc, char* argv[]) { try {
                                         map_object_instance_aabb,
                                         &extra_hit_info
                                 )) if (extra_hit_info.distance < closest_hit_map_object_distance) { closest_hit_map_object_distance = extra_hit_info.distance;
-                                        selected_map_object = map_object_instance.get();
+                                        SetSelectedMapObject(map_object_instance.get());
                                 }
                         }
                         if (closest_hit_map_object_distance == FLT_MAX) selected_map_object = nullptr;  // (none hit; deselect)
@@ -557,12 +560,12 @@ int main(int argc, char* argv[]) { try {
                 if (selected_map_object != nullptr) {
                         static bool _cloned = false;
                         if (gw.key_states[GWindower::KEY_LEFT_ALT] && gw.key_states[GWindower::KEY_D] && selected_map_object != nullptr && !_cloned) { _cloned = true;
-                                selected_map_object = selected_map_object->Clone();
+                                SetSelectedMapObject(selected_map_object->Clone());
                         } else if (!gw.key_states[GWindower::KEY_D]) _cloned = false;
 
                         if (gw.key_states[GWindower::KEY_DELETE] && selected_map_object != nullptr) {
                                 selected_map_object->Delete();
-                                selected_map_object = nullptr;
+                                SetSelectedMapObject();
                         }
 
                         const float camera_yaw_offsetted_45 = (uint16_t)(gr3d.camera_yaw + USHRT_MAX/8); // offsetting by 45-degrees (PI/4) to make it so the axes line up neatly for conditional checks (otherwise -Z (angle 0 (forward)) axis alignment check would be both less than 0 *and* greater than 0) (...might make more sense if you visualize it in your head (starts off as like a pizza sliced into 4 slices making an 'X' shape, then rotated 45-degrees to make the slice seams into a '+' shape))  // (re-casting to ushort to force ushort overflow)
@@ -664,7 +667,7 @@ int main(int argc, char* argv[]) { try {
                                 ImGui::SetNextWindowPos({(float)gw.window_width, 0.0f}, ImGuiCond_Always, {1.0f, 0.0f});
                                 ImGui::Begin("ADD", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
                                         for (const std::string& name : map_object_names) {
-                                                if (ImGui::Button(name.c_str())) selected_map_object = MapObjectInstance::Create(name, gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]);
+                                                if (ImGui::Button(name.c_str())) SetSelectedMapObject(MapObjectInstance::Create(name, gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]));
                                         }
                                 } ImGui::End();
 
@@ -673,6 +676,52 @@ int main(int argc, char* argv[]) { try {
                                         ImGui::Begin("INSPECTOR", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
                                                 selected_map_object->DrawInspectorContents();
                                         } ImGui::End();
+
+                                        ImGuizmo::BeginFrame(); ImGuizmo::SetRect(0, 0, gw.window_width, gw.window_height);
+                                        if (!selected_map_object_changed) {  // (skip 1 frame after MapObject selection to prevent premature gizmo input)
+                                                float3 _camera_pos = {gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]};
+                                                float4x4 view = linalg::lookat_matrix(
+                                                        _camera_pos,
+                                                        _camera_pos + linalg::qrot(
+                                                                linalg::qmul(
+                                                                        linalg::rotation_quat(float3{0, 1, 0}, -(float)(gr3d.camera_yaw*(2*M_PI/65536))),
+                                                                        linalg::rotation_quat(float3{1, 0, 0}, (float)(gr3d.camera_pitch*(2*M_PI/65536)))
+                                                                ),
+                                                                float3{0, 0, -1}
+                                                        ),
+                                                        float3{0, 1, 0}
+                                                );
+                                                float4x4 proj = linalg::perspective_matrix(gr3d.camera_fov, ((float)gw.window_width)/((float)gw.window_height), gr3d.camera_near, gr3d.camera_far, linalg::fwd_axis::neg_z, linalg::z_range::zero_to_one);
+                                                float4x4 matrix = linalg::mul(
+                                                        linalg::translation_matrix(float3{
+                                                                selected_map_object->mesh_instance->position[0],
+                                                                selected_map_object->mesh_instance->position[1],
+                                                                selected_map_object->mesh_instance->position[2]
+                                                        }),
+                                                        linalg::mul(
+                                                                linalg::rotation_matrix(float4{
+                                                                        selected_map_object->mesh_instance->rotation[0],
+                                                                        selected_map_object->mesh_instance->rotation[1],
+                                                                        selected_map_object->mesh_instance->rotation[2],
+                                                                        selected_map_object->mesh_instance->rotation[3]
+                                                                }),
+                                                                linalg::scaling_matrix(float3{
+                                                                        selected_map_object->mesh_instance->scale[0],
+                                                                        selected_map_object->mesh_instance->scale[1],
+                                                                        selected_map_object->mesh_instance->scale[2]
+                                                                })
+                                                        )
+                                                );
+                                                gcollision2::AABB aabb = selected_map_object->AABB();
+                                                const bool snap = !gw.key_states[GWindower::KEY_LEFT_ALT]; static const float SNAP_AMOUNT[3] = {POSITION_SNAP, POSITION_SNAP, POSITION_SNAP};
+                                                ImGuizmo::Manipulate((float*)&view, (float*)&proj, (ImGuizmo::OPERATION::TRANSLATE | ImGuizmo::OPERATION::ROTATE | ImGuizmo::OPERATION::SCALE | ImGuizmo::OPERATION::BOUNDS), ImGuizmo::MODE::WORLD,
+                                                        (float*)&matrix, NULL, (snap ? SNAP_AMOUNT : NULL),
+                                                        (float*)&aabb, (snap ? SNAP_AMOUNT : NULL)
+                                                );
+                                                if (ImGuizmo::IsUsing()) {
+                                                        // TODO
+                                                }
+                                        }
                                 }
 
                                 if (show_quit_dialog) {
@@ -692,6 +741,8 @@ int main(int argc, char* argv[]) { try {
                                 }
                         } ImGui::Render(); if (gw.locked_mouse) ImGui::SetWindowFocus(); // (unfocus GUI if controlling camera)
                 }
+
+                selected_map_object_changed = false;
 
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); glViewport(0, 0, gw.window_width, gw.window_height);  // (leaving this inside of the mainloop in case I want to support windowed operation in the future)
                 gr3d.DrawFrame(gw.window_width, gw.window_height);
