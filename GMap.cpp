@@ -227,18 +227,8 @@ int main(int argc, char* argv[]) { try {
                         previous_mesh_instance->Remove();
                 } std::string GetUserModel() { return user_model; } std::string GetUserTexture() { return user_texture; }
 
-                float4x4 Transform() {
-                        return linalg::mul(
-                                linalg::translation_matrix(float3{mesh_instance->position[0], mesh_instance->position[1], mesh_instance->position[2]}),
-                                linalg::mul(
-                                        linalg::rotation_matrix(float4{mesh_instance->rotation[0], mesh_instance->rotation[1], mesh_instance->rotation[2], mesh_instance->rotation[3]}),
-                                        linalg::scaling_matrix(float3{mesh_instance->scale[0], mesh_instance->scale[1], mesh_instance->scale[2]})
-                                )
-                        );
-                }
-
                 gcollision2::AABB* LocalAABB() { return (user_model != "") ? GetMeshAABBFromFile(user_model) : GetMeshAABBFromFile(base_registration->model); }
-                gcollision2::AABB WorldAABB() { const float4x4 _transform = Transform(); return LocalAABB()->Transformed((float*)&_transform); }
+                gcollision2::AABB WorldAABB() { return LocalAABB()->Transformed(mesh_instance->Transform()); }
 
                 MapObjectInstance* Clone() {
                         return Create(
@@ -486,21 +476,7 @@ int main(int argc, char* argv[]) { try {
 
                 static bool _obj_pick_ray_casted = false;
                 if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !gw.locked_mouse && !ImGui::GetIO().WantCaptureMouse && !_obj_pick_ray_casted) { _obj_pick_ray_casted = true;
-                        float3 _camera_pos = {gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]};
-                        float4x4 view = linalg::lookat_matrix(
-                                _camera_pos,
-                                _camera_pos + linalg::qrot(
-                                        linalg::qmul(
-                                                linalg::rotation_quat(float3{0, 1, 0}, -(float)(gr3d.camera_yaw*(2*M_PI/65536))),
-                                                linalg::rotation_quat(float3{1, 0, 0}, (float)(gr3d.camera_pitch*(2*M_PI/65536)))
-                                        ),
-                                        float3{0, 0, -1}
-                                ),
-                                float3{0, 1, 0}
-                        );
-                        float4x4 proj = linalg::perspective_matrix(gr3d.camera_fov, ((float)gw.window_width)/((float)gw.window_height), gr3d.camera_near, gr3d.camera_far, linalg::fwd_axis::neg_z, linalg::z_range::zero_to_one);
-                        float4x4 viewProjection = linalg::mul(proj, view);  // NOTE: Flip multiplication order in not-OpenGL
-                        float4x4 inverse_viewProjection = linalg::inverse(viewProjection);
+                        float4x4 inverse_viewProjection = linalg::inverse(*(float4x4*)gr3d.ViewProjection());
                         float normalized_device_x = (2.0f*gw.mouse_x)/(float)gw.window_width - 1.0f;
                         float normalized_device_y = 1.0f - (2.0f*gw.mouse_y)/(float)gw.window_height;
                         float4 near_quat = linalg::mul(inverse_viewProjection, float4{normalized_device_x, normalized_device_y, 0.0f, 1.0f});
@@ -647,21 +623,7 @@ int main(int argc, char* argv[]) { try {
 
                                         ImGuizmo::BeginFrame(); ImGuizmo::SetRect(0, 0, gw.window_width, gw.window_height);
                                         if (!selected_map_object_changed) {  // (skip 1 frame after MapObject selection to prevent premature gizmo input)
-                                                float3 _camera_pos = {gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]};
-                                                uint16_t _more_clamped_camera_pitch = (gr3d.camera_pitch < 16386) ? 16386 : (gr3d.camera_pitch > 49150) ? 49150 : gr3d.camera_pitch;  // (to fix 90-degree vertical gizmo rendering bug)
-                                                float4x4 view = linalg::lookat_matrix(
-                                                        _camera_pos,
-                                                        _camera_pos + linalg::qrot(
-                                                                linalg::qmul(
-                                                                        linalg::rotation_quat(float3{0, 1, 0}, -(float)(gr3d.camera_yaw*(2*M_PI/65536))),
-                                                                        linalg::rotation_quat(float3{1, 0, 0}, (float)(_more_clamped_camera_pitch*(2*M_PI/65536)))
-                                                                ),
-                                                                float3{0, 0, -1}
-                                                        ),
-                                                        float3{0, 1, 0}
-                                                );
-                                                float4x4 proj = linalg::perspective_matrix(gr3d.camera_fov, ((float)gw.window_width)/((float)gw.window_height), gr3d.camera_near, gr3d.camera_far, linalg::fwd_axis::neg_z, linalg::z_range::zero_to_one);
-                                                float4x4 transform = GetSelectedMapObject()->Transform();
+                                                float4x4 transform = *(float4x4*)GetSelectedMapObject()->mesh_instance->Transform();
                                                 gcollision2::AABB* aabb;
                                                 const ImGuizmo::OPERATION operation = (ImGuizmo::OPERATION)(
                                                         (GetSelectedMapObject()->base_registration->data.position ? ImGuizmo::OPERATION::TRANSLATE : 0) |
@@ -670,7 +632,7 @@ int main(int argc, char* argv[]) { try {
                                                 );
                                                 if (operation & ImGuizmo::OPERATION::BOUNDS) aabb = GetSelectedMapObject()->LocalAABB();
                                                 const bool snap = !gw.key_states[GWindower::KEY_LEFT_ALT]; static const float SNAP_AMOUNT[3] = {POSITION_SNAP, POSITION_SNAP, POSITION_SNAP};
-                                                ImGuizmo::Manipulate((float*)&view, (float*)&proj, operation, ImGuizmo::MODE::WORLD,
+                                                ImGuizmo::Manipulate(gr3d.View(), gr3d.Projection(), operation, ImGuizmo::MODE::WORLD,
                                                         (float*)&transform, NULL, (snap ? SNAP_AMOUNT : NULL),
                                                         (operation & ImGuizmo::OPERATION::BOUNDS) ? (float*)aabb : NULL, (snap ? SNAP_AMOUNT : NULL)
                                                 );
