@@ -99,7 +99,7 @@ int main(int argc, char* argv[]) { try {
                 if (map_object.contains("extra_data")) registration->extra_data = map_object["extra_data"];
         }
 
-        static GWindower gw{1280, 720, 4, 6}; gw.locked_mouse = false;
+        static GWindower gw{1280, 720, 4, 6};
         if (!gladLoadGL()) ERROR("Failed to load OpenGL functions");
 
         GRenderer3D gr3d;
@@ -225,7 +225,7 @@ int main(int argc, char* argv[]) { try {
                         mesh_instance->scale[0] = previous_mesh_instance->scale[0]; mesh_instance->scale[1] = previous_mesh_instance->scale[1]; mesh_instance->scale[2] = previous_mesh_instance->scale[2];
                         mesh_instance->color_RGBA = previous_mesh_instance->color_RGBA;
                         previous_mesh_instance->Remove();
-                } std::string GetUserModel() { return user_model; } std::string GetUserTexture() { return user_texture; }
+                }
 
                 gcollision2::AABB* LocalAABB() { return (user_model != "") ? GetMeshAABBFromFile(user_model) : GetMeshAABBFromFile(base_registration->model); }
                 gcollision2::AABB WorldAABB() { return LocalAABB()->Transformed(mesh_instance->Transform()); }
@@ -449,12 +449,11 @@ int main(int argc, char* argv[]) { try {
         for (;;) { // MAIN LOOP
                 double delta_time = gfp.Wait();
 
-                if (gw.mouse_button_states[GWindower::MOUSEBUTTON_RIGHT]) gw.locked_mouse = true;
-                else gw.locked_mouse = false;
+                const bool controlling_camera = gw.mouse_button_states[GWindower::MOUSEBUTTON_RIGHT];
 
-                bool window_should_close = !gw.Update(false, 0.0, true);
+                bool window_should_close = !gw.Update(controlling_camera, false, 0.0, true);
 
-                if (gw.locked_mouse) {
+                if (controlling_camera) {
                         gr3d.camera_yaw += gw.mouse_x * CAMERA_SENSITIVITY;
                         gr3d.camera_pitch += gw.mouse_y * CAMERA_SENSITIVITY;
                         static int camera_move_speed = STARTING_CAMERA_MOVE_SPEED;
@@ -475,7 +474,7 @@ int main(int argc, char* argv[]) { try {
                 }
 
                 static bool _obj_pick_ray_casted = false;
-                if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !gw.locked_mouse && !ImGui::GetIO().WantCaptureMouse && !_obj_pick_ray_casted) { _obj_pick_ray_casted = true;
+                if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !controlling_camera && !ImGui::GetIO().WantCaptureMouse && !_obj_pick_ray_casted) { _obj_pick_ray_casted = true;
                         float4x4 inverse_viewProjection = linalg::inverse(*(float4x4*)gr3d.ViewProjection());
                         float normalized_device_x = (2.0f*gw.mouse_x)/(float)gw.window_width - 1.0f;
                         float normalized_device_y = 1.0f - (2.0f*gw.mouse_y)/(float)gw.window_height;
@@ -661,7 +660,7 @@ int main(int argc, char* argv[]) { try {
                                                 if (ImGui::Button("Cancel")) show_quit_dialog = false;
                                         } ImGui::End();
                                 }
-                        } ImGui::Render(); if (gw.locked_mouse) ImGui::SetWindowFocus(); // (unfocus GUI if controlling camera)
+                        } ImGui::Render(); if (controlling_camera) ImGui::SetWindowFocus(); // (unfocus GUI if controlling camera)
                 }
 
                 selected_map_object_changed = false;
