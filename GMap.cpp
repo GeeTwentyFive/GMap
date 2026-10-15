@@ -589,23 +589,7 @@ int main(int argc, char* argv[]) { try {
 
                 if (show_quit_dialog) show_ui = true;
 
-                if (show_ui) {
-                        if (GetSelectedMapObject() != nullptr) {
-                                gcollision2::AABB aabb = GetSelectedMapObject()->WorldAABB();
-                                glr3d.DrawLine(aabb.min.x, aabb.min.y, aabb.min.z, aabb.min.x, aabb.max.y, aabb.min.z);
-                                glr3d.DrawLine(aabb.min.x, aabb.max.y, aabb.min.z, aabb.max.x, aabb.max.y, aabb.min.z);
-                                glr3d.DrawLine(aabb.max.x, aabb.max.y, aabb.min.z, aabb.max.x, aabb.min.y, aabb.min.z);
-                                glr3d.DrawLine(aabb.max.x, aabb.min.y, aabb.min.z, aabb.min.x, aabb.min.y, aabb.min.z);
-                                glr3d.DrawLine(aabb.min.x, aabb.min.y, aabb.max.z, aabb.min.x, aabb.max.y, aabb.max.z);
-                                glr3d.DrawLine(aabb.min.x, aabb.max.y, aabb.max.z, aabb.max.x, aabb.max.y, aabb.max.z);
-                                glr3d.DrawLine(aabb.max.x, aabb.max.y, aabb.max.z, aabb.max.x, aabb.min.y, aabb.max.z);
-                                glr3d.DrawLine(aabb.max.x, aabb.min.y, aabb.max.z, aabb.min.x, aabb.min.y, aabb.max.z);
-                                glr3d.DrawLine(aabb.min.x, aabb.min.y, aabb.min.z, aabb.min.x, aabb.min.y, aabb.max.z);
-                                glr3d.DrawLine(aabb.min.x, aabb.max.y, aabb.min.z, aabb.min.x, aabb.max.y, aabb.max.z);
-                                glr3d.DrawLine(aabb.max.x, aabb.max.y, aabb.min.z, aabb.max.x, aabb.max.y, aabb.max.z);
-                                glr3d.DrawLine(aabb.max.x, aabb.min.y, aabb.min.z, aabb.max.x, aabb.min.y, aabb.max.z);
-                        }
-
+                if (show_ui) { if (GetSelectedMapObject() != nullptr) { const gcollision2::AABB aabb = GetSelectedMapObject()->WorldAABB(); glr3d.DrawLine(aabb.min.x, aabb.min.y, aabb.min.z, aabb.min.x, aabb.max.y, aabb.min.z); glr3d.DrawLine(aabb.min.x, aabb.max.y, aabb.min.z, aabb.max.x, aabb.max.y, aabb.min.z); glr3d.DrawLine(aabb.max.x, aabb.max.y, aabb.min.z, aabb.max.x, aabb.min.y, aabb.min.z); glr3d.DrawLine(aabb.max.x, aabb.min.y, aabb.min.z, aabb.min.x, aabb.min.y, aabb.min.z); glr3d.DrawLine(aabb.min.x, aabb.min.y, aabb.max.z, aabb.min.x, aabb.max.y, aabb.max.z); glr3d.DrawLine(aabb.min.x, aabb.max.y, aabb.max.z, aabb.max.x, aabb.max.y, aabb.max.z); glr3d.DrawLine(aabb.max.x, aabb.max.y, aabb.max.z, aabb.max.x, aabb.min.y, aabb.max.z); glr3d.DrawLine(aabb.max.x, aabb.min.y, aabb.max.z, aabb.min.x, aabb.min.y, aabb.max.z); glr3d.DrawLine(aabb.min.x, aabb.min.y, aabb.min.z, aabb.min.x, aabb.min.y, aabb.max.z); glr3d.DrawLine(aabb.min.x, aabb.max.y, aabb.min.z, aabb.min.x, aabb.max.y, aabb.max.z); glr3d.DrawLine(aabb.max.x, aabb.max.y, aabb.min.z, aabb.max.x, aabb.max.y, aabb.max.z); glr3d.DrawLine(aabb.max.x, aabb.min.y, aabb.min.z, aabb.max.x, aabb.min.y, aabb.max.z); }
                         ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame(); ImGui::NewFrame(); { ImGui::SetNextWindowPos({0.0f, (float)gw.window_height}, ImGuiCond_Always, {0.0f, 1.0f}); ImGui::Begin("USAGE", NULL, (ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); { ImGui::TextUnformatted(USAGE_TEXT, USAGE_TEXT+sizeof(USAGE_TEXT)); } ImGui::End();
                                 ImGui::SetNextWindowPos({(float)gw.window_width, 0.0f}, ImGuiCond_Always, {1.0f, 0.0f});
                                 ImGui::Begin("ADD", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
@@ -623,17 +607,17 @@ int main(int argc, char* argv[]) { try {
                                         ImGuizmo::BeginFrame(); ImGuizmo::SetRect(0, 0, gw.window_width, gw.window_height);
                                         if (!selected_map_object_changed) {  // (skip 1 frame after MapObject selection to prevent premature gizmo input)
                                                 float4x4 transform = *(float4x4*)GetSelectedMapObject()->mesh_instance->Transform();
-                                                gcollision2::AABB* aabb;
+                                                gcollision2::AABB aabb;
                                                 const ImGuizmo::OPERATION operation = (ImGuizmo::OPERATION)(
                                                         (GetSelectedMapObject()->base_registration->data.position ? ImGuizmo::OPERATION::TRANSLATE : 0) |
                                                         (GetSelectedMapObject()->base_registration->data.scale ? ImGuizmo::OPERATION::SCALE : 0) |
                                                         ((GetSelectedMapObject()->base_registration->data.scale && GetSelectedMapObject()->base_registration->data.position) ? ImGuizmo::OPERATION::BOUNDS : 0)
                                                 );
-                                                if (operation & ImGuizmo::OPERATION::BOUNDS) aabb = GetSelectedMapObject()->LocalAABB();
+                                                if (operation & ImGuizmo::OPERATION::BOUNDS) aabb = *GetSelectedMapObject()->LocalAABB();
                                                 const bool snap = !gw.key_states[GWindower::KEY_LEFT_ALT]; static const float SNAP_AMOUNT[3] = {POSITION_SNAP, POSITION_SNAP, POSITION_SNAP};
                                                 ImGuizmo::Manipulate(gr3d.View(), gr3d.Projection(), operation, ImGuizmo::MODE::WORLD,
                                                         (float*)&transform, NULL, (snap ? SNAP_AMOUNT : NULL),
-                                                        (operation & ImGuizmo::OPERATION::BOUNDS) ? (float*)aabb : NULL, (snap ? SNAP_AMOUNT : NULL)
+                                                        (operation & ImGuizmo::OPERATION::BOUNDS) ? (float*)&aabb : NULL, (snap ? SNAP_AMOUNT : NULL)
                                                 );
                                                 if (ImGuizmo::IsUsing()) {
                                                         if (GetSelectedMapObject()->base_registration->data.position) GetSelectedMapObject()->mesh_instance->position[0] = transform.row(0).w; GetSelectedMapObject()->mesh_instance->position[1] = transform.row(1).w; GetSelectedMapObject()->mesh_instance->position[2] = transform.row(2).w;
