@@ -140,16 +140,8 @@ int main(int argc, char* argv[]) { try {
         static auto GetMeshAABBFromFile = [&](std::string mesh_path) -> gcollision2::AABB* {
                 static std::unordered_map<std::string, gcollision2::AABB> calculated_aabbs;
                 if (!calculated_aabbs.contains(mesh_path)) {
-                        gcollision2::AABB aabb{{FLT_MAX, FLT_MAX, FLT_MAX}, {-FLT_MAX, -FLT_MAX, -FLT_MAX}};
-                        for (const GOBJ::Vertex& vertex : GetMeshDataFromFile(mesh_path)->vertices) {
-                                if (vertex.pos[0] < aabb.min.x) aabb.min.x = vertex.pos[0];
-                                else if (vertex.pos[0] > aabb.max.x) aabb.max.x = vertex.pos[0];
-                                if (vertex.pos[1] < aabb.min.y) aabb.min.y = vertex.pos[1];
-                                else if (vertex.pos[1] > aabb.max.y) aabb.max.y = vertex.pos[1];
-                                if (vertex.pos[2] < aabb.min.z) aabb.min.z = vertex.pos[2];
-                                else if (vertex.pos[2] > aabb.max.z) aabb.max.z = vertex.pos[2];
-                        }
-                        calculated_aabbs[mesh_path] = aabb;
+                        const std::vector<GOBJ::Vertex>* vertices = &GetMeshDataFromFile(mesh_path)->vertices;
+                        calculated_aabbs[mesh_path] = gcollision2::AABB::FromVertices((float*)vertices->data(), vertices->size(), offsetof(GOBJ::Vertex, pos), sizeof(GOBJ::Vertex));
                 }
                 return &calculated_aabbs[mesh_path];
         };
@@ -247,30 +239,10 @@ int main(int argc, char* argv[]) { try {
                         );
                 }
 
+                gcollision2::AABB* LocalAABB() { return (user_model != "") ? GetMeshAABBFromFile(user_model) : GetMeshAABBFromFile(base_registration->model); }
                 gcollision2::AABB WorldAABB() {
-                        gcollision2::AABB aabb{{FLT_MAX, FLT_MAX, FLT_MAX}, {-FLT_MAX, -FLT_MAX, -FLT_MAX}};
-                        gcollision2::AABB* mesh_aabb = (user_model != "") ? GetMeshAABBFromFile(user_model) : GetMeshAABBFromFile(base_registration->model);
-                        float3 mesh_aabb_cuboid[8]{
-                                {mesh_aabb->min.x, mesh_aabb->min.y, mesh_aabb->min.z},
-                                {mesh_aabb->min.x, mesh_aabb->min.y, mesh_aabb->max.z},
-                                {mesh_aabb->min.x, mesh_aabb->max.y, mesh_aabb->min.z},
-                                {mesh_aabb->min.x, mesh_aabb->max.y, mesh_aabb->max.z},
-                                {mesh_aabb->max.x, mesh_aabb->min.y, mesh_aabb->min.z},
-                                {mesh_aabb->max.x, mesh_aabb->min.y, mesh_aabb->max.z},
-                                {mesh_aabb->max.x, mesh_aabb->max.y, mesh_aabb->min.z},
-                                {mesh_aabb->max.x, mesh_aabb->max.y, mesh_aabb->max.z}
-                        };
-                        float4x4 transform = Transform();
-                        for (float3& vertex : mesh_aabb_cuboid) vertex = linalg::mul(transform, float4{vertex, 1.0f}).xyz();
-                        for (const float3& vertex : mesh_aabb_cuboid) {
-                                if (vertex.x < aabb.min.x) aabb.min.x = vertex.x;
-                                else if (vertex.x > aabb.max.x) aabb.max.x = vertex.x;
-                                if (vertex.y < aabb.min.y) aabb.min.y = vertex.y;
-                                else if (vertex.y > aabb.max.y) aabb.max.y = vertex.y;
-                                if (vertex.z < aabb.min.z) aabb.min.z = vertex.z;
-                                else if (vertex.z > aabb.max.z) aabb.max.z = vertex.z;
-                        }
-                        return aabb;
+                        const float4x4 _transform = Transform();
+                        return LocalAABB()->Transformed((float*)&_transform);
                 }
 
                 MapObjectInstance* Clone() {
@@ -700,7 +672,7 @@ int main(int argc, char* argv[]) { try {
                                                         (selected_map_object->base_registration->data.scale ? ImGuizmo::OPERATION::SCALE : 0) |
                                                         ((selected_map_object->base_registration->data.scale && selected_map_object->base_registration->data.position) ? ImGuizmo::OPERATION::BOUNDS : 0)
                                                 );
-                                                if (operation & ImGuizmo::OPERATION::BOUNDS) aabb = GetMeshAABBFromFile(selected_map_object->base_registration->model);
+                                                if (operation & ImGuizmo::OPERATION::BOUNDS) aabb = selected_map_object->LocalAABB();
                                                 const bool snap = !gw.key_states[GWindower::KEY_LEFT_ALT]; static const float SNAP_AMOUNT[3] = {POSITION_SNAP, POSITION_SNAP, POSITION_SNAP};
                                                 ImGuizmo::Manipulate((float*)&view, (float*)&proj, operation, ImGuizmo::MODE::WORLD,
                                                         (float*)&transform, NULL, (snap ? SNAP_AMOUNT : NULL),
