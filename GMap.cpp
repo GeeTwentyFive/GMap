@@ -620,7 +620,7 @@ int main(int argc, char* argv[]) { try {
                                                         (operation & ImGuizmo::OPERATION::BOUNDS) ? (float*)&aabb : NULL, (snap ? SNAP_AMOUNT : NULL)
                                                 );
                                                 if (ImGuizmo::IsUsing()) {
-                                                        if (GetSelectedMapObject()->base_registration->data.position) GetSelectedMapObject()->mesh_instance->position[0] = transform.row(0).w; GetSelectedMapObject()->mesh_instance->position[1] = transform.row(1).w; GetSelectedMapObject()->mesh_instance->position[2] = transform.row(2).w;
+                                                        if (GetSelectedMapObject()->base_registration->data.position) { GetSelectedMapObject()->mesh_instance->position[0] = transform.row(0).w; GetSelectedMapObject()->mesh_instance->position[1] = transform.row(1).w; GetSelectedMapObject()->mesh_instance->position[2] = transform.row(2).w; }
                                                         if (GetSelectedMapObject()->base_registration->data.scale) { GetSelectedMapObject()->mesh_instance->scale[0] = linalg::length(float3{transform.row(0).x, transform.row(1).x, transform.row(2).x}); GetSelectedMapObject()->mesh_instance->scale[1] = linalg::length(float3{transform.row(0).y, transform.row(1).y, transform.row(2).y}); GetSelectedMapObject()->mesh_instance->scale[2] = linalg::length(float3{transform.row(0).z, transform.row(1).z, transform.row(2).z}); }
                                                         if (GetSelectedMapObject()->base_registration->data.scale && GetSelectedMapObject()->base_registration->data.position) {
                                                                 // TODO
