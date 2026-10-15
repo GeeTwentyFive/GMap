@@ -512,13 +512,13 @@ int main(int argc, char* argv[]) { try {
                         for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) {
                                 gcollision2::AABB map_object_instance_aabb = map_object_instance->WorldAABB();
                                 if (map_object_instance_aabb.ContainsPoint(float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]})) continue;  // (skip if camera is inside of obj (to make it so you can select objs inside of other objs))
-                                gcollision2::RayHitExtraInfo extra_hit_info;
+                                float hit_map_object_distance;
                                 if (gcollision2::IntersectRayAABB(
                                         float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]},
                                         ray_dir,
                                         map_object_instance_aabb,
-                                        &extra_hit_info
-                                )) if (extra_hit_info.distance < closest_hit_map_object_distance) { closest_hit_map_object_distance = extra_hit_info.distance;
+                                        &hit_map_object_distance
+                                )) if (hit_map_object_distance < closest_hit_map_object_distance) { closest_hit_map_object_distance = hit_map_object_distance;
                                         SetSelectedMapObject(map_object_instance.get());
                                 }
                         }
