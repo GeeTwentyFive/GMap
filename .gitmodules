@@ -34,3 +34,6 @@
 [submodule "libs/ImGuizmo"]
 	path = libs/ImGuizmo
 	url = https://github.com/CedricGuillemet/ImGuizmo.git
+[submodule "libs/libGMisc3DMath"]
+	path = libs/libGMisc3DMath
+	url = https://github.com/GeeTwentyFive/libGMisc3DMath.git

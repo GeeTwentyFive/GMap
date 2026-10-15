@@ -40,6 +40,7 @@ static inline void _NFD_SetWaylandDisplay(void* wayland_display) {  // (to avoid
 #endif
 }
 #include <GLineRenderer3D.hpp>
+#include <libGMisc3DMath/libGMisc3DMath.hpp>
 
 
 #define ERROR(msg) throw std::runtime_error(std::string("[ERROR] ") + __FILE__ + "@" + std::to_string(__LINE__) + " (" + __func__ + "): " + (msg))
@@ -254,24 +255,8 @@ int main(int argc, char* argv[]) { try {
                         map_object_instances.pop_back();
                 }
 
-                float3 GetEuler() {
-                        float3 euler = {
-                                atan2(2*(mesh_instance->rotation[3]*mesh_instance->rotation[0] + mesh_instance->rotation[1]*mesh_instance->rotation[2]), 1 - 2*(mesh_instance->rotation[0]*mesh_instance->rotation[0] + mesh_instance->rotation[1]*mesh_instance->rotation[1])) * (float)(180/M_PI),
-                                asin(2*(mesh_instance->rotation[3]*mesh_instance->rotation[1] - mesh_instance->rotation[2]*mesh_instance->rotation[0])) * (float)(180/M_PI),
-                                atan2(2*(mesh_instance->rotation[3]*mesh_instance->rotation[2] + mesh_instance->rotation[0]*mesh_instance->rotation[1]), 1 - 2*(mesh_instance->rotation[1]*mesh_instance->rotation[1] + mesh_instance->rotation[2]*mesh_instance->rotation[2])) * (float)(180/M_PI)
-                        }; if (euler.x != euler.x) euler.x = 0.0f; if (euler.y != euler.y) euler.y = 0.0f; if (euler.z != euler.z) euler.z = 0.0f; // NaN fix
-                        return euler;
-                }
-                void SetEuler(float3 euler) { euler = linalg::clamp(euler, -180.0f, 180.0f);
-                        float4 quat = linalg::qmul(
-                                linalg::rotation_quat(float3{0, 0, 1}, euler[2]*(float)(M_PI/180)),
-                                linalg::qmul(
-                                        linalg::rotation_quat(float3{0, 1, 0}, euler[1]*(float)(M_PI/180)),
-                                        linalg::rotation_quat(float3{1, 0, 0}, euler[0]*(float)(M_PI/180))
-                                )
-                        );
-                        mesh_instance->rotation[0] = quat.x; mesh_instance->rotation[1] = quat.y; mesh_instance->rotation[2] = quat.z; mesh_instance->rotation[3] = quat.w;
-                }
+                float3 GetEuler() { return GMisc3DMath::QuatToEuler(float4{mesh_instance->rotation[0], mesh_instance->rotation[1], mesh_instance->rotation[2], mesh_instance->rotation[3]}); }
+                void SetEuler(float3 euler) { const float4 quat = GMisc3DMath::EulerToQuat(euler); mesh_instance->rotation[0] = quat.x; mesh_instance->rotation[1] = quat.y; mesh_instance->rotation[2] = quat.z; mesh_instance->rotation[3] = quat.w; }
 
                 void DrawInspectorContents() {
                         if (base_registration->data.user_model) {
@@ -475,14 +460,6 @@ int main(int argc, char* argv[]) { try {
 
                 static bool _obj_pick_ray_casted = false;
                 if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !controlling_camera && !ImGui::GetIO().WantCaptureMouse && !_obj_pick_ray_casted) { _obj_pick_ray_casted = true;
-                        float4x4 inverse_viewProjection = linalg::inverse(*(float4x4*)gr3d.ViewProjection());
-                        float normalized_device_x = (2.0f*gw.mouse_x)/(float)gw.window_width - 1.0f;
-                        float normalized_device_y = 1.0f - (2.0f*gw.mouse_y)/(float)gw.window_height;
-                        float4 near_quat = linalg::mul(inverse_viewProjection, float4{normalized_device_x, normalized_device_y, 0.0f, 1.0f});
-                        float3 near_point = {near_quat.x/near_quat.w, near_quat.y/near_quat.w, near_quat.z/near_quat.w};
-                        float4 far_quat = linalg::mul(inverse_viewProjection, float4{normalized_device_x, normalized_device_y, 1.0f, 1.0f});
-                        float3 far_point = {far_quat.x/far_quat.w, far_quat.y/far_quat.w, far_quat.z/far_quat.w};
-                        float3 ray_dir = linalg::normalize(far_point - near_point);
                         float closest_hit_map_object_distance = FLT_MAX;
                         for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) {
                                 gcollision2::AABB map_object_instance_aabb = map_object_instance->WorldAABB();
@@ -490,7 +467,7 @@ int main(int argc, char* argv[]) { try {
                                 float hit_map_object_distance;
                                 if (gcollision2::IntersectRayAABB(
                                         float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]},
-                                        ray_dir,
+                                        GMisc3DMath::ScreenToWorldRay(gw.mouse_x, gw.mouse_y, gw.window_width, gw.window_height, (float4x4*)gr3d.ViewProjection()),
                                         map_object_instance_aabb,
                                         &hit_map_object_distance
                                 )) if (hit_map_object_distance < closest_hit_map_object_distance) { closest_hit_map_object_distance = hit_map_object_distance;
