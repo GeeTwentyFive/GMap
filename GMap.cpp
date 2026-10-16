@@ -32,7 +32,6 @@ using namespace linalg::aliases;
 #include <imgui/backends/imgui_impl_glfw.h>
 #include <imgui/backends/imgui_impl_opengl3.h>
 #include <imgui/misc/cpp/imgui_stdlib.h>
-#include <ImGuizmo.h>
 #include <nfd.h>
 static inline void _NFD_SetWaylandDisplay(void* wayland_display) {  // (to avoid using #ifdef below (since you can't stack C macros on the same lines as source code...))
 #ifdef __linux__
@@ -580,30 +579,6 @@ int main(int argc, char* argv[]) { try {
                                         ImGui::Begin("INSPECTOR", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
                                                 GetSelectedMapObject()->DrawInspectorContents();
                                         } ImGui::End();
-
-                                        ImGuizmo::BeginFrame(); ImGuizmo::SetRect(0, 0, gw.window_width, gw.window_height);
-                                        if (!selected_map_object_changed) {  // (skip 1 frame after MapObject selection to prevent premature gizmo input)
-                                                float4x4 transform = *(float4x4*)GetSelectedMapObject()->mesh_instance->Transform();
-                                                gcollision2::AABB aabb;
-                                                const ImGuizmo::OPERATION operation = (ImGuizmo::OPERATION)(
-                                                        (GetSelectedMapObject()->base_registration->data.position ? ImGuizmo::OPERATION::TRANSLATE : 0) |
-                                                        (GetSelectedMapObject()->base_registration->data.scale ? ImGuizmo::OPERATION::SCALE : 0) |
-                                                        ((GetSelectedMapObject()->base_registration->data.scale && GetSelectedMapObject()->base_registration->data.position) ? ImGuizmo::OPERATION::BOUNDS : 0)
-                                                );
-                                                if (operation & ImGuizmo::OPERATION::BOUNDS) aabb = *GetSelectedMapObject()->LocalAABB();
-                                                const bool snap = !gw.key_states[GWindower::KEY_LEFT_ALT]; static const float SNAP_AMOUNT[3] = {POSITION_SNAP, POSITION_SNAP, POSITION_SNAP};
-                                                ImGuizmo::Manipulate(gr3d.View(), gr3d.Projection(), operation, ImGuizmo::MODE::WORLD,
-                                                        (float*)&transform, NULL, (snap ? SNAP_AMOUNT : NULL),
-                                                        (operation & ImGuizmo::OPERATION::BOUNDS) ? (float*)&aabb : NULL, (snap ? SNAP_AMOUNT : NULL)
-                                                );
-                                                if (ImGuizmo::IsUsing()) {
-                                                        if (GetSelectedMapObject()->base_registration->data.position) { GetSelectedMapObject()->mesh_instance->position[0] = transform.row(0).w; GetSelectedMapObject()->mesh_instance->position[1] = transform.row(1).w; GetSelectedMapObject()->mesh_instance->position[2] = transform.row(2).w; }
-                                                        if (GetSelectedMapObject()->base_registration->data.scale) { GetSelectedMapObject()->mesh_instance->scale[0] = linalg::length(float3{transform.row(0).x, transform.row(1).x, transform.row(2).x}); GetSelectedMapObject()->mesh_instance->scale[1] = linalg::length(float3{transform.row(0).y, transform.row(1).y, transform.row(2).y}); GetSelectedMapObject()->mesh_instance->scale[2] = linalg::length(float3{transform.row(0).z, transform.row(1).z, transform.row(2).z}); }
-                                                        if (GetSelectedMapObject()->base_registration->data.scale && GetSelectedMapObject()->base_registration->data.position) {
-                                                                // TODO
-                                                        }
-                                                }
-                                        }
                                 }
 
                                 if (show_quit_dialog) {

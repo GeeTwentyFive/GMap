@@ -39,10 +39,6 @@ target_include_directories(dear_imgui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/libs/i
 target_compile_definitions(dear_imgui PRIVATE "IMGUI_IMPL_GLFW_DISABLE_X11")
 target_link_libraries(dear_imgui glfw)
 
-set(IMGUIZMO_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
-add_subdirectory("libs/ImGuizmo")
-target_link_libraries(imguizmo dear_imgui)
-
 set(NFD_PORTAL ON CACHE BOOL "" FORCE)
 set(NFD_X11 OFF CACHE BOOL "" FORCE)
 add_subdirectory("libs/nativefiledialog-extended")
@@ -54,6 +50,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         GLineRenderer3D
         nlohmann_json
         dear_imgui
-        imguizmo
         nfd
 )
