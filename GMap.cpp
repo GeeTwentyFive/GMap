@@ -504,6 +504,7 @@ int main(int argc, char* argv[]) { try {
                                 }
                                 if (closest_hit_map_object_distance != FLT_MAX) {
                                         const float3 align_offset = (target_normal * GetSelectedMapObject()->LocalAABB()->GetSize()/2.0f) - GetSelectedMapObject()->LocalAABB()->GetCenterPos();
+                                        if (gw.key_states[GWindower::KEY_LEFT_SHIFT]) target_point = linalg::select(linalg::abs(target_normal), target_point, linalg::round(target_point / POSITION_SNAP) * POSITION_SNAP);
                                         GetSelectedMapObject()->mesh_instance->position[0] = target_point.x + align_offset.x; GetSelectedMapObject()->mesh_instance->position[1] = target_point.y + align_offset.y; GetSelectedMapObject()->mesh_instance->position[2] = target_point.z + align_offset.z;
                                 }
                         }
