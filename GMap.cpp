@@ -433,11 +433,11 @@ int main(int argc, char* argv[]) { try {
         for (;;) { // MAIN LOOP
                 double delta_time = gfp.Wait();
 
-                const bool controlling_camera = gw.mouse_button_states[GWindower::MOUSEBUTTON_RIGHT];
+                const bool mouse_locked = gw.mouse_button_states[GWindower::MOUSEBUTTON_RIGHT];
 
-                bool window_should_close = !gw.Update(controlling_camera, false, 0.0, true);
+                bool window_should_close = !gw.Update(mouse_locked, false, 0.0, true);
 
-                if (controlling_camera) {
+                if (mouse_locked) {
                         gr3d.camera_yaw += gw.mouse_x * CAMERA_SENSITIVITY;
                         gr3d.camera_pitch += gw.mouse_y * CAMERA_SENSITIVITY;
                         static int camera_move_speed = STARTING_CAMERA_MOVE_SPEED;
@@ -458,17 +458,15 @@ int main(int argc, char* argv[]) { try {
                 }
 
                 static bool _obj_pick_ray_casted = false;
-                if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !controlling_camera && !ImGui::GetIO().WantCaptureMouse && !_obj_pick_ray_casted) { _obj_pick_ray_casted = true;
+                if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !mouse_locked && !ImGui::GetIO().WantCaptureMouse && !_obj_pick_ray_casted) { _obj_pick_ray_casted = true;
                         float closest_hit_map_object_distance = FLT_MAX;
                         for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) {
-                                gcollision2::AABB map_object_instance_aabb = map_object_instance->WorldAABB();
-                                if (map_object_instance_aabb.ContainsPoint(float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]})) continue;  // (skip if camera is inside of obj (to make it so you can select objs inside of other objs))
+                                gcollision2::AABB map_object_instance_aabb = map_object_instance->WorldAABB(); if (map_object_instance_aabb.ContainsPoint(float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]})) continue;  // (skip if camera is inside of obj (to make it so you can select objs inside of other objs))
                                 float hit_map_object_distance;
                                 if (gcollision2::IntersectRayAABB(
                                         float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]},
                                         GMisc3DMath::ScreenToWorldRay(gw.mouse_x, gw.mouse_y, gw.window_width, gw.window_height, (float4x4*)gr3d.ViewProjection()),
-                                        map_object_instance_aabb,
-                                        &hit_map_object_distance
+                                        map_object_instance_aabb, &hit_map_object_distance
                                 )) if (hit_map_object_distance < closest_hit_map_object_distance) { closest_hit_map_object_distance = hit_map_object_distance;
                                         SetSelectedMapObject(map_object_instance.get());
                                 }
@@ -485,6 +483,29 @@ int main(int argc, char* argv[]) { try {
                         if (gw.key_states[GWindower::KEY_DELETE] && GetSelectedMapObject() != nullptr) {
                                 GetSelectedMapObject()->Delete();
                                 SetSelectedMapObject();
+                        }
+
+                        if (gw.mouse_button_states[GWindower::MOUSEBUTTON_MIDDLE]) {
+                                float3 target_point, target_normal;
+                                float closest_hit_map_object_distance = FLT_MAX;
+                                for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) { if (map_object_instance.get() == GetSelectedMapObject()) continue;  // (ignore selected obj)
+                                        gcollision2::AABB map_object_instance_aabb = map_object_instance->WorldAABB(); if (map_object_instance_aabb.ContainsPoint(float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]})) continue;  // (skip if camera is inside of obj (to make it so you can select objs inside of other objs))
+                                        float hit_map_object_distance;
+                                        float3 hit_map_object_point, hit_map_object_normal;
+                                        if (gcollision2::IntersectRayAABB(
+                                                float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]},
+                                                GMisc3DMath::ScreenToWorldRay(gw.mouse_x, gw.mouse_y, gw.window_width, gw.window_height, (float4x4*)gr3d.ViewProjection()),
+                                                map_object_instance_aabb, &hit_map_object_distance,
+                                                &hit_map_object_point, &hit_map_object_normal
+                                        )) if (hit_map_object_distance < closest_hit_map_object_distance) { closest_hit_map_object_distance = hit_map_object_distance;
+                                                target_point = hit_map_object_point;
+                                                target_normal = hit_map_object_normal;
+                                        }
+                                }
+                                if (closest_hit_map_object_distance != FLT_MAX) {
+                                        const float3 align_offset = (target_normal * GetSelectedMapObject()->LocalAABB()->GetSize()/2.0f) - GetSelectedMapObject()->LocalAABB()->GetCenterPos();
+                                        GetSelectedMapObject()->mesh_instance->position[0] = target_point.x + align_offset.x; GetSelectedMapObject()->mesh_instance->position[1] = target_point.y + align_offset.y; GetSelectedMapObject()->mesh_instance->position[2] = target_point.z + align_offset.z;
+                                }
                         }
 
                         const float camera_yaw_offsetted_45 = (uint16_t)(gr3d.camera_yaw + USHRT_MAX/8); // offsetting by 45-degrees (PI/4) to make it so the axes line up neatly for conditional checks (otherwise -Z (angle 0 (forward)) axis alignment check would be both less than 0 *and* greater than 0) (...might make more sense if you visualize it in your head (starts off as like a pizza sliced into 4 slices making an 'X' shape, then rotated 45-degrees to make the slice seams into a '+' shape))  // (re-casting to ushort to force ushort overflow)
@@ -596,7 +617,7 @@ int main(int argc, char* argv[]) { try {
                                                 if (ImGui::Button("Cancel")) show_quit_dialog = false;
                                         } ImGui::End();
                                 }
-                        } ImGui::Render(); if (controlling_camera) ImGui::SetWindowFocus(); // (unfocus GUI if controlling camera)
+                        } ImGui::Render(); if (mouse_locked) ImGui::SetWindowFocus(); // (unfocus GUI if controlling camera)
                 }
 
                 selected_map_object_changed = false;
