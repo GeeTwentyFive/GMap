@@ -52,6 +52,7 @@ const float POSITION_SNAP = 1.0f;
 const float ROTATION_SNAP = 180.0f/32.0f;
 const float SCALE_SNAP = 1.0f;
 
+const float MODKEY_SNAP_FRACTION = 1.0f/8.0f;
 const float ARROW_SNAP_FRACTION = 1.0f/8.0f;
 const float PLANAR_SNAP_FRACTION = 1.0f/64.0f;
 
@@ -279,7 +280,7 @@ int main(int argc, char* argv[]) { try {
                         }
                         if (base_registration->data.position) {
                                 float previous_position[3] = {mesh_instance->position[0], mesh_instance->position[1], mesh_instance->position[2]};
-                                if (ImGui::DragFloat3("POSITION", mesh_instance->position, POSITION_SNAP)) {
+                                if (ImGui::DragFloat3("POSITION", mesh_instance->position, (gw.key_states[GWindower::KEY_LEFT_ALT] ? POSITION_SNAP*MODKEY_SNAP_FRACTION : POSITION_SNAP), 0.0f, 0.0f, "%.3f", ImGuiSliderFlags_NoSpeedTweaks)) {
                                         if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !gw.key_states[GWindower::KEY_LEFT_ALT]) { // round if click-dragging
                                                 if (mesh_instance->position[0] != previous_position[0]) mesh_instance->position[0] = std::round(mesh_instance->position[0] / POSITION_SNAP) * POSITION_SNAP;
                                                 if (mesh_instance->position[1] != previous_position[1]) mesh_instance->position[1] = std::round(mesh_instance->position[1] / POSITION_SNAP) * POSITION_SNAP;
@@ -290,7 +291,7 @@ int main(int argc, char* argv[]) { try {
                         if (base_registration->data.rotation) {
                                 float3 euler = GetEuler();
                                 float3 previous_euler = euler;
-                                if (ImGui::DragFloat3("ROTATION", (float*)&euler, ROTATION_SNAP)) {
+                                if (ImGui::DragFloat3("ROTATION", (float*)&euler, (gw.key_states[GWindower::KEY_LEFT_ALT] ? ROTATION_SNAP*MODKEY_SNAP_FRACTION : ROTATION_SNAP), 0.0f, 0.0f, "%.3f", ImGuiSliderFlags_NoSpeedTweaks)) {
                                         if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !gw.key_states[GWindower::KEY_LEFT_ALT]) { // round to multiple of target rotation fraction if click-dragging
                                                 if (euler.x != previous_euler.x) euler.x = std::round(euler.x / ROTATION_SNAP) * ROTATION_SNAP;
                                                 if (euler.y != previous_euler.y) euler.y = std::round(euler.y / ROTATION_SNAP) * ROTATION_SNAP;
@@ -301,7 +302,7 @@ int main(int argc, char* argv[]) { try {
                         }
                         if (base_registration->data.scale) {
                                 float previous_scale[3] = {mesh_instance->scale[0], mesh_instance->scale[1], mesh_instance->scale[2]};
-                                if (ImGui::DragFloat3("SCALE", mesh_instance->scale, SCALE_SNAP)) {
+                                if (ImGui::DragFloat3("SCALE", mesh_instance->scale, (gw.key_states[GWindower::KEY_LEFT_ALT] ? SCALE_SNAP*MODKEY_SNAP_FRACTION : SCALE_SNAP), 0.0f, 0.0f, "%.3f", ImGuiSliderFlags_NoSpeedTweaks)) {
                                         if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !gw.key_states[GWindower::KEY_LEFT_ALT]) { // round if click-dragging
                                                 if (mesh_instance->scale[0] != previous_scale[0]) mesh_instance->scale[0] = std::round(mesh_instance->scale[0] / SCALE_SNAP) * SCALE_SNAP;
                                                 if (mesh_instance->scale[1] != previous_scale[1]) mesh_instance->scale[1] = std::round(mesh_instance->scale[1] / SCALE_SNAP) * SCALE_SNAP;
@@ -426,9 +427,9 @@ int main(int argc, char* argv[]) { try {
 
         GLineRenderer3D glr3d;
 
-        MapObjectInstance* _selected_map_object = nullptr;  // (not set directly (but via SetSelectedMapObject()) to make sure `selected_map_object_changed` is updated/correct)
-        bool selected_map_object_changed = false;
-        auto SetSelectedMapObject = [&](MapObjectInstance* target = nullptr) { _selected_map_object = target; selected_map_object_changed = true; };
+        MapObjectInstance* _selected_map_object = nullptr;  // (not set directly (but via SetSelectedMapObject()) to make sure `selected_map_object_just_changed` is updated/correct)
+        bool selected_map_object_just_changed = false;
+        auto SetSelectedMapObject = [&](MapObjectInstance* target = nullptr) { _selected_map_object = target; selected_map_object_just_changed = true; };
         auto GetSelectedMapObject = [&]() -> MapObjectInstance* { return _selected_map_object; };
 
         glClearColor(0.0, 0.0, 0.0, 1.0);
@@ -531,7 +532,7 @@ int main(int argc, char* argv[]) { try {
                                 }}
                                 else if (gw.key_states[GWindower::KEY_LEFT_ALT]) { if (GetSelectedMapObject()->base_registration->data.scale) {
                                         const float new_y = -gw.mouse_y * SCALE_SNAP * PLANAR_SNAP_FRACTION * camera_move_speed;
-                                        GetSelectedMapObject()->mesh_instance->scale[1] += new_y; // TODO: pos below (x/2 + y/2)?
+                                        GetSelectedMapObject()->mesh_instance->scale[1] += new_y;
                                         const float new_x_or_z = gw.mouse_x * SCALE_SNAP * PLANAR_SNAP_FRACTION * camera_move_speed;
                                         if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) { GetSelectedMapObject()->mesh_instance->scale[0] += new_x_or_z; gr3d.camera_pos[2] -= (new_x_or_z/2.0f + new_y/2.0f); }
                                         else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) { GetSelectedMapObject()->mesh_instance->scale[2] += new_x_or_z; gr3d.camera_pos[0] += (new_x_or_z/2.0f + new_y/2.0f); }
@@ -633,10 +634,10 @@ int main(int argc, char* argv[]) { try {
                                         }
                                 } ImGui::End();
 
-                                if (GetSelectedMapObject() != nullptr) {
+                                if (GetSelectedMapObject() != nullptr && !selected_map_object_just_changed) {
                                         ImGui::SetNextWindowPos({0.0f, 0.0f}, ImGuiCond_Always, {0.0f, 0.0f});
                                         ImGui::Begin("INSPECTOR", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
-                                                if (!selected_map_object_changed) GetSelectedMapObject()->DrawInspectorContents();
+                                                GetSelectedMapObject()->DrawInspectorContents();
                                         } ImGui::End();
                                 }
 
@@ -658,7 +659,7 @@ int main(int argc, char* argv[]) { try {
                         } ImGui::Render();
                 }
 
-                selected_map_object_changed = false;
+                selected_map_object_just_changed = false;
 
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); glViewport(0, 0, gw.window_width, gw.window_height);  // (leaving this inside of the mainloop in case I want to support windowed operation in the future)
                 gr3d.DrawFrame(gw.window_width, gw.window_height);
