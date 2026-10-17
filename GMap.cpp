@@ -410,32 +410,59 @@ int main(int argc, char* argv[]) { try {
                         }
 
                         if (gw.mouse_button_states[GWindower::MOUSEBUTTON_MIDDLE]) {
-                                float3 target_point, target_normal;
-                                float closest_hit_map_object_distance = FLT_MAX;
-                                for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) { if (map_object_instance.get() == GetSelectedMapObject()) continue;  // (ignore selected obj)
-                                        gcollision2::AABB map_object_instance_aabb = map_object_instance->WorldAABB(); if (map_object_instance_aabb.ContainsPoint(float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]})) continue;  // (skip if camera is inside of obj (to make it so you can select objs inside of other objs))
-                                        float hit_map_object_distance;
-                                        float3 hit_map_object_point, hit_map_object_normal;
-                                        if (gcollision2::IntersectRayAABB(
-                                                float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]},
-                                                GMisc3DMath::ScreenToWorldRay(gw.mouse_x, gw.mouse_y, gw.window_width, gw.window_height, (float4x4*)gr3d.ViewProjection()),
-                                                map_object_instance_aabb, &hit_map_object_distance,
-                                                &hit_map_object_point, &hit_map_object_normal
-                                        )) if (hit_map_object_distance < closest_hit_map_object_distance) { closest_hit_map_object_distance = hit_map_object_distance;
-                                                target_point = hit_map_object_point;
-                                                target_normal = hit_map_object_normal;
+                                if (gw.key_states[GWindower::KEY_LEFT_ALT]) {  // lookat
+                                        float3 target_point;
+                                        float closest_hit_map_object_distance = FLT_MAX;
+                                        for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) { if (map_object_instance.get() == GetSelectedMapObject()) continue;  // (ignore selected obj)
+                                                gcollision2::AABB map_object_instance_aabb = map_object_instance->WorldAABB(); if (map_object_instance_aabb.ContainsPoint(float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]})) continue;  // (skip if camera is inside of obj (to make it so you can select objs inside of other objs))
+                                                float hit_map_object_distance;
+                                                float3 hit_map_object_point;
+                                                if (gcollision2::IntersectRayAABB(
+                                                        float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]},
+                                                        GMisc3DMath::ScreenToWorldRay(gw.mouse_x, gw.mouse_y, gw.window_width, gw.window_height, (float4x4*)gr3d.ViewProjection()),
+                                                        map_object_instance_aabb, &hit_map_object_distance,
+                                                        &hit_map_object_point
+                                                )) if (hit_map_object_distance < closest_hit_map_object_distance) { closest_hit_map_object_distance = hit_map_object_distance;
+                                                        target_point = hit_map_object_point;
+                                                }
+                                        }
+                                        if (closest_hit_map_object_distance != FLT_MAX) {
+                                                const float4x4 lookat_matrix = linalg::lookat_matrix(
+                                                        float3{GetSelectedMapObject()->mesh_instance->position[0], GetSelectedMapObject()->mesh_instance->position[1], GetSelectedMapObject()->mesh_instance->position[2]},
+                                                        target_point, float3{0, 1, 0}
+                                                );
+                                                const float4 lookat_quat = linalg::rotation_quat(float3x3{lookat_matrix.row(0).xyz(), lookat_matrix.row(1).xyz(), lookat_matrix.row(2).xyz()});
+                                                GetSelectedMapObject()->mesh_instance->rotation[0] = lookat_quat.x; GetSelectedMapObject()->mesh_instance->rotation[1] = lookat_quat.y; GetSelectedMapObject()->mesh_instance->rotation[2] = lookat_quat.z; GetSelectedMapObject()->mesh_instance->rotation[3] = lookat_quat.w;
                                         }
                                 }
-                                if (closest_hit_map_object_distance != FLT_MAX) {
-                                        const float3 align_offset = (target_normal * GetSelectedMapObject()->WorldAABB().GetSize()/2.0f) - GetSelectedMapObject()->LocalAABB()->GetCenterPos();
-                                        if (gw.key_states[GWindower::KEY_LEFT_SHIFT]) target_point = linalg::select(linalg::abs(target_normal), target_point, linalg::round(target_point / POSITION_SNAP) * POSITION_SNAP);
-                                        GetSelectedMapObject()->mesh_instance->position[0] = target_point.x + align_offset.x; GetSelectedMapObject()->mesh_instance->position[1] = target_point.y + align_offset.y; GetSelectedMapObject()->mesh_instance->position[2] = target_point.z + align_offset.z;
+                                else {  // surface snap
+                                        float3 target_point, target_normal;
+                                        float closest_hit_map_object_distance = FLT_MAX;
+                                        for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) { if (map_object_instance.get() == GetSelectedMapObject()) continue;  // (ignore selected obj)
+                                                gcollision2::AABB map_object_instance_aabb = map_object_instance->WorldAABB(); if (map_object_instance_aabb.ContainsPoint(float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]})) continue;  // (skip if camera is inside of obj (to make it so you can select objs inside of other objs))
+                                                float hit_map_object_distance;
+                                                float3 hit_map_object_point, hit_map_object_normal;
+                                                if (gcollision2::IntersectRayAABB(
+                                                        float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]},
+                                                        GMisc3DMath::ScreenToWorldRay(gw.mouse_x, gw.mouse_y, gw.window_width, gw.window_height, (float4x4*)gr3d.ViewProjection()),
+                                                        map_object_instance_aabb, &hit_map_object_distance,
+                                                        &hit_map_object_point, &hit_map_object_normal
+                                                )) if (hit_map_object_distance < closest_hit_map_object_distance) { closest_hit_map_object_distance = hit_map_object_distance;
+                                                        target_point = hit_map_object_point;
+                                                        target_normal = hit_map_object_normal;
+                                                }
+                                        }
+                                        if (closest_hit_map_object_distance != FLT_MAX) {
+                                                const float3 align_offset = (target_normal * GetSelectedMapObject()->WorldAABB().GetSize()/2.0f) - GetSelectedMapObject()->LocalAABB()->GetCenterPos();
+                                                if (gw.key_states[GWindower::KEY_LEFT_SHIFT]) target_point = linalg::select(linalg::abs(target_normal), target_point, linalg::round(target_point / POSITION_SNAP) * POSITION_SNAP);
+                                                GetSelectedMapObject()->mesh_instance->position[0] = target_point.x + align_offset.x; GetSelectedMapObject()->mesh_instance->position[1] = target_point.y + align_offset.y; GetSelectedMapObject()->mesh_instance->position[2] = target_point.z + align_offset.z;
+                                        }
                                 }
                         }
 
                         const float camera_yaw_offsetted_45 = (uint16_t)(gr3d.camera_yaw + USHRT_MAX/8); // offsetting by 45-degrees (PI/4) to make it so the axes line up neatly for conditional checks (otherwise -Z (angle 0 (forward)) axis alignment check would be both less than 0 *and* greater than 0) (...might make more sense if you visualize it in your head (starts off as like a pizza sliced into 4 slices making an 'X' shape, then rotated 45-degrees to make the slice seams into a '+' shape))  // (re-casting to ushort to force ushort overflow)
 
-                        if (controlling_camera && gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT]) {
+                        if (controlling_camera && gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT]) {  // planar transform
                                 if (gw.key_states[GWindower::KEY_LEFT_SHIFT]) { if (GetSelectedMapObject()->base_registration->data.rotation) {
                                         const float4 new_rot = linalg::qmul(
                                                 linalg::rotation_quat(float3{0, 1, 0}, gw.mouse_x * (-ROTATION_SNAP * (float)M_PI/180) * PLANAR_SNAP_FRACTION * camera_move_speed),  // y
