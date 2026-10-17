@@ -625,7 +625,7 @@ int main(int argc, char* argv[]) { try {
                 if (show_quit_dialog) show_ui = true;
 
                 if (show_ui) { if (GetSelectedMapObject() != nullptr) { const gcollision2::AABB aabb = GetSelectedMapObject()->WorldAABB(); glr3d.DrawLine(aabb.min.x, aabb.min.y, aabb.min.z, aabb.min.x, aabb.max.y, aabb.min.z); glr3d.DrawLine(aabb.min.x, aabb.max.y, aabb.min.z, aabb.max.x, aabb.max.y, aabb.min.z); glr3d.DrawLine(aabb.max.x, aabb.max.y, aabb.min.z, aabb.max.x, aabb.min.y, aabb.min.z); glr3d.DrawLine(aabb.max.x, aabb.min.y, aabb.min.z, aabb.min.x, aabb.min.y, aabb.min.z); glr3d.DrawLine(aabb.min.x, aabb.min.y, aabb.max.z, aabb.min.x, aabb.max.y, aabb.max.z); glr3d.DrawLine(aabb.min.x, aabb.max.y, aabb.max.z, aabb.max.x, aabb.max.y, aabb.max.z); glr3d.DrawLine(aabb.max.x, aabb.max.y, aabb.max.z, aabb.max.x, aabb.min.y, aabb.max.z); glr3d.DrawLine(aabb.max.x, aabb.min.y, aabb.max.z, aabb.min.x, aabb.min.y, aabb.max.z); glr3d.DrawLine(aabb.min.x, aabb.min.y, aabb.min.z, aabb.min.x, aabb.min.y, aabb.max.z); glr3d.DrawLine(aabb.min.x, aabb.max.y, aabb.min.z, aabb.min.x, aabb.max.y, aabb.max.z); glr3d.DrawLine(aabb.max.x, aabb.max.y, aabb.min.z, aabb.max.x, aabb.max.y, aabb.max.z); glr3d.DrawLine(aabb.max.x, aabb.min.y, aabb.min.z, aabb.max.x, aabb.min.y, aabb.max.z); }
-                        ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame(); ImGui::NewFrame(); { ImGui::SetNextWindowPos({0.0f, (float)gw.window_height}, ImGuiCond_Always, {0.0f, 1.0f}); ImGui::Begin("USAGE", NULL, (ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); { ImGui::TextUnformatted(USAGE_TEXT, USAGE_TEXT+sizeof(USAGE_TEXT)); } ImGui::End();
+                        ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame(); ImGui::NewFrame(); { if (controlling_camera || (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !ImGui::GetIO().WantCaptureMouse)) ImGui::SetWindowFocus(); /* (unfocus GUI if controlling camera or clicked off) */ ImGui::SetNextWindowPos({0.0f, (float)gw.window_height}, ImGuiCond_Always, {0.0f, 1.0f}); ImGui::Begin("USAGE", NULL, (ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); { ImGui::TextUnformatted(USAGE_TEXT, USAGE_TEXT+sizeof(USAGE_TEXT)); } ImGui::End();
                                 ImGui::SetNextWindowPos({(float)gw.window_width, 0.0f}, ImGuiCond_Always, {1.0f, 0.0f});
                                 ImGui::Begin("ADD", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
                                         for (const std::string& name : map_object_names) {
@@ -636,7 +636,7 @@ int main(int argc, char* argv[]) { try {
                                 if (GetSelectedMapObject() != nullptr) {
                                         ImGui::SetNextWindowPos({0.0f, 0.0f}, ImGuiCond_Always, {0.0f, 0.0f});
                                         ImGui::Begin("INSPECTOR", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
-                                                GetSelectedMapObject()->DrawInspectorContents();
+                                                if (!selected_map_object_changed) GetSelectedMapObject()->DrawInspectorContents();
                                         } ImGui::End();
                                 }
 
@@ -655,7 +655,7 @@ int main(int argc, char* argv[]) { try {
                                                 if (ImGui::Button("Cancel")) show_quit_dialog = false;
                                         } ImGui::End();
                                 }
-                        } ImGui::Render(); if (controlling_camera) ImGui::SetWindowFocus(); // (unfocus GUI if controlling camera)
+                        } ImGui::Render();
                 }
 
                 selected_map_object_changed = false;
