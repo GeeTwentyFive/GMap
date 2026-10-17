@@ -229,7 +229,7 @@ int main(int argc, char* argv[]) { try {
                         mesh_instance->scale[0] = previous_mesh_instance->scale[0]; mesh_instance->scale[1] = previous_mesh_instance->scale[1]; mesh_instance->scale[2] = previous_mesh_instance->scale[2];
                         mesh_instance->color_RGBA = previous_mesh_instance->color_RGBA;
                         previous_mesh_instance->Remove();
-                }
+                } std::string GetUserModel() { return user_model; } std::string GetUserTexture() { return user_texture; }
 
                 gcollision2::AABB* LocalAABB() { return (user_model != "") ? GetMeshAABBFromFile(user_model) : GetMeshAABBFromFile(base_registration->model); }
                 gcollision2::AABB WorldAABB() { return LocalAABB()->Transformed(mesh_instance->Transform()); }
@@ -260,87 +260,6 @@ int main(int argc, char* argv[]) { try {
 
                 float3 GetEuler() { return GMisc3DMath::QuatToEuler(float4{mesh_instance->rotation[0], mesh_instance->rotation[1], mesh_instance->rotation[2], mesh_instance->rotation[3]}); }
                 void SetEuler(float3 euler) { const float4 quat = GMisc3DMath::EulerToQuat(euler); mesh_instance->rotation[0] = quat.x; mesh_instance->rotation[1] = quat.y; mesh_instance->rotation[2] = quat.z; mesh_instance->rotation[3] = quat.w; }
-
-                void DrawInspectorContents() {
-                        if (base_registration->data.user_model) {
-                                static const char button_label[] = "Model";
-                                if (ImGui::Button(button_label)) SetUserModelAndOrTexture(ShowAndGetPathFromOpenDialog("obj"));
-                                std::string path_label_text = user_model;
-                                if (path_label_text.size() > 32-sizeof(button_label)) path_label_text = "..." + path_label_text.substr(path_label_text.size() - (32-sizeof(button_label)));
-                                ImGui::SameLine();
-                                ImGui::TextUnformatted(path_label_text.c_str(), path_label_text.c_str()+path_label_text.size());
-                        }
-                        if (base_registration->data.user_texture) {
-                                static const char button_label[] = "Texture";
-                                if (ImGui::Button(button_label)) SetUserModelAndOrTexture("", ShowAndGetPathFromOpenDialog("png"));
-                                std::string path_label_text = user_texture;
-                                if (path_label_text.size() > 32-sizeof(button_label)) path_label_text = "..." + path_label_text.substr(path_label_text.size() - (32-sizeof(button_label)));
-                                ImGui::SameLine();
-                                ImGui::TextUnformatted(path_label_text.c_str(), path_label_text.c_str()+path_label_text.size());
-                        }
-                        if (base_registration->data.position) {
-                                float previous_position[3] = {mesh_instance->position[0], mesh_instance->position[1], mesh_instance->position[2]};
-                                if (ImGui::DragFloat3("POSITION", mesh_instance->position, (gw.key_states[GWindower::KEY_LEFT_ALT] ? POSITION_SNAP*MODKEY_SNAP_FRACTION : POSITION_SNAP), 0.0f, 0.0f, "%.3f", ImGuiSliderFlags_NoSpeedTweaks)) {
-                                        if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !gw.key_states[GWindower::KEY_LEFT_ALT]) { // round if click-dragging
-                                                if (mesh_instance->position[0] != previous_position[0]) mesh_instance->position[0] = std::round(mesh_instance->position[0] / POSITION_SNAP) * POSITION_SNAP;
-                                                if (mesh_instance->position[1] != previous_position[1]) mesh_instance->position[1] = std::round(mesh_instance->position[1] / POSITION_SNAP) * POSITION_SNAP;
-                                                if (mesh_instance->position[2] != previous_position[2]) mesh_instance->position[2] = std::round(mesh_instance->position[2] / POSITION_SNAP) * POSITION_SNAP;
-                                        }
-                                }
-                        }
-                        if (base_registration->data.rotation) {
-                                float3 euler = GetEuler();
-                                float3 previous_euler = euler;
-                                if (ImGui::DragFloat3("ROTATION", (float*)&euler, (gw.key_states[GWindower::KEY_LEFT_ALT] ? ROTATION_SNAP*MODKEY_SNAP_FRACTION : ROTATION_SNAP), 0.0f, 0.0f, "%.3f", ImGuiSliderFlags_NoSpeedTweaks)) {
-                                        if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !gw.key_states[GWindower::KEY_LEFT_ALT]) { // round to multiple of target rotation fraction if click-dragging
-                                                if (euler.x != previous_euler.x) euler.x = std::round(euler.x / ROTATION_SNAP) * ROTATION_SNAP;
-                                                if (euler.y != previous_euler.y) euler.y = std::round(euler.y / ROTATION_SNAP) * ROTATION_SNAP;
-                                                if (euler.z != previous_euler.z) euler.z = std::round(euler.z / ROTATION_SNAP) * ROTATION_SNAP;
-                                        }
-                                        SetEuler(euler);
-                                }
-                        }
-                        if (base_registration->data.scale) {
-                                float previous_scale[3] = {mesh_instance->scale[0], mesh_instance->scale[1], mesh_instance->scale[2]};
-                                if (ImGui::DragFloat3("SCALE", mesh_instance->scale, (gw.key_states[GWindower::KEY_LEFT_ALT] ? SCALE_SNAP*MODKEY_SNAP_FRACTION : SCALE_SNAP), 0.0f, 0.0f, "%.3f", ImGuiSliderFlags_NoSpeedTweaks)) {
-                                        if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !gw.key_states[GWindower::KEY_LEFT_ALT]) { // round if click-dragging
-                                                if (mesh_instance->scale[0] != previous_scale[0]) mesh_instance->scale[0] = std::round(mesh_instance->scale[0] / SCALE_SNAP) * SCALE_SNAP;
-                                                if (mesh_instance->scale[1] != previous_scale[1]) mesh_instance->scale[1] = std::round(mesh_instance->scale[1] / SCALE_SNAP) * SCALE_SNAP;
-                                                if (mesh_instance->scale[2] != previous_scale[2]) mesh_instance->scale[2] = std::round(mesh_instance->scale[2] / SCALE_SNAP) * SCALE_SNAP;
-                                        }
-                                }
-                        }
-                        if (base_registration->data.color) {
-                                ImVec4 color = ImGui::ColorConvertU32ToFloat4(mesh_instance->color_RGBA);
-                                float _temp;
-                                _temp = color.x; color.x = color.w; color.w = _temp;
-                                _temp = color.y; color.y = color.z; color.z = _temp;
-                                ImGui::ColorPicker4("COLOR", (float*)&color);
-                                _temp = color.x; color.x = color.w; color.w = _temp;
-                                _temp = color.y; color.y = color.z; color.z = _temp;
-                                mesh_instance->color_RGBA = ImGui::ColorConvertFloat4ToU32(color);
-                        }
-                        if (extra_data.size() > 0) { ImGui::NewLine();
-                                uint64_t _uid = 0;
-                                for (auto& [label, val] : extra_data.items()) { ImGui::PushID(_uid); switch (val.type()) { default: break;
-                                        case (nlohmann::json::value_t::boolean): { bool _val = val;
-                                                ImGui::Checkbox(label.c_str(), &_val); val = _val;
-                                        } break;
-                                        case (nlohmann::json::value_t::number_integer): { int64_t _val = val;
-                                                ImGui::InputScalar(label.c_str(), ImGuiDataType_S64, &_val); val = _val;
-                                        } break;
-                                        case (nlohmann::json::value_t::number_unsigned): { uint64_t _val = val;
-                                                ImGui::InputScalar(label.c_str(), ImGuiDataType_U64, &_val); val = _val;
-                                        } break;
-                                        case (nlohmann::json::value_t::number_float): { float _val = val;
-                                                ImGui::InputFloat(label.c_str(), &_val, 0, 0, "%f"); val = _val;
-                                        } break;
-                                        case (nlohmann::json::value_t::string): { std::string _val = val;
-                                                ImGui::InputText(label.c_str(), &_val); val = _val;
-                                        } break;
-                                } ImGui::PopID(); _uid++; }
-                        }
-                }
 
                 nlohmann::json SerializeToJSON() {
                         nlohmann::json map_object_instance_json = nlohmann::json::object();
@@ -518,7 +437,6 @@ int main(int argc, char* argv[]) { try {
 
                         if (controlling_camera && gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT]) {
                                 if (gw.key_states[GWindower::KEY_LEFT_SHIFT]) { if (GetSelectedMapObject()->base_registration->data.rotation) {
-                                        const float4 new_y = linalg::rotation_quat(float3{0, 1, 0}, gw.mouse_x * (-ROTATION_SNAP * (float)M_PI/180) * PLANAR_SNAP_FRACTION * camera_move_speed);
                                         float4 new_x_or_z;
                                         if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) new_x_or_z = linalg::rotation_quat(float3{-1, 0, 0}, -gw.mouse_y * (-ROTATION_SNAP * (float)M_PI/180) * PLANAR_SNAP_FRACTION * camera_move_speed);
                                         else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) new_x_or_z = linalg::rotation_quat(float3{0, 0, -1}, -gw.mouse_y * (-ROTATION_SNAP * (float)M_PI/180) * PLANAR_SNAP_FRACTION * camera_move_speed);
@@ -526,18 +444,20 @@ int main(int argc, char* argv[]) { try {
                                         else new_x_or_z = linalg::rotation_quat(float3{0, 0, 1}, -gw.mouse_y * (-ROTATION_SNAP * (float)M_PI/180) * PLANAR_SNAP_FRACTION * camera_move_speed);
                                         const float4 new_rot = linalg::qmul(
                                                 float4{GetSelectedMapObject()->mesh_instance->rotation[0], GetSelectedMapObject()->mesh_instance->rotation[1], GetSelectedMapObject()->mesh_instance->rotation[2], GetSelectedMapObject()->mesh_instance->rotation[3]},
-                                                linalg::qmul(new_y, new_x_or_z)
+                                                linalg::qmul(
+                                                        linalg::rotation_quat(float3{0, 1, 0}, gw.mouse_x * (-ROTATION_SNAP * (float)M_PI/180) * PLANAR_SNAP_FRACTION * camera_move_speed),  // y
+                                                        new_x_or_z
+                                                )
                                         );
                                         GetSelectedMapObject()->mesh_instance->rotation[0] = new_rot.x; GetSelectedMapObject()->mesh_instance->rotation[1] = new_rot.y; GetSelectedMapObject()->mesh_instance->rotation[2] = new_rot.z; GetSelectedMapObject()->mesh_instance->rotation[3] = new_rot.w;
                                 }}
                                 else if (gw.key_states[GWindower::KEY_LEFT_ALT]) { if (GetSelectedMapObject()->base_registration->data.scale) {
-                                        const float new_y = -gw.mouse_y * SCALE_SNAP * PLANAR_SNAP_FRACTION * camera_move_speed;
-                                        GetSelectedMapObject()->mesh_instance->scale[1] += new_y;
+                                        GetSelectedMapObject()->mesh_instance->scale[1] += -gw.mouse_y * SCALE_SNAP * PLANAR_SNAP_FRACTION * camera_move_speed;
                                         const float new_x_or_z = gw.mouse_x * SCALE_SNAP * PLANAR_SNAP_FRACTION * camera_move_speed;
-                                        if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) { GetSelectedMapObject()->mesh_instance->scale[0] += new_x_or_z; gr3d.camera_pos[2] -= (new_x_or_z/2.0f + new_y/2.0f); }
-                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) { GetSelectedMapObject()->mesh_instance->scale[2] += new_x_or_z; gr3d.camera_pos[0] += (new_x_or_z/2.0f + new_y/2.0f); }
-                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*2 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*3) { GetSelectedMapObject()->mesh_instance->scale[0] += new_x_or_z; gr3d.camera_pos[2] += (new_x_or_z/2.0f + new_y/2.0f); }
-                                        else { GetSelectedMapObject()->mesh_instance->scale[2] += new_x_or_z; gr3d.camera_pos[0] -= (new_x_or_z/2.0f + new_y/2.0f); }
+                                        if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) { GetSelectedMapObject()->mesh_instance->scale[0] += new_x_or_z; }
+                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) { GetSelectedMapObject()->mesh_instance->scale[2] += new_x_or_z; }
+                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*2 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*3) { GetSelectedMapObject()->mesh_instance->scale[0] += new_x_or_z; }
+                                        else { GetSelectedMapObject()->mesh_instance->scale[2] += new_x_or_z; }
                                 }} else { if (GetSelectedMapObject()->base_registration->data.position) {
                                         const float new_y = -gw.mouse_y * POSITION_SNAP * PLANAR_SNAP_FRACTION * camera_move_speed;
                                         GetSelectedMapObject()->mesh_instance->position[1] += new_y; gr3d.camera_pos[1] += new_y;
@@ -637,7 +557,84 @@ int main(int argc, char* argv[]) { try {
                                 if (GetSelectedMapObject() != nullptr && !selected_map_object_just_changed) {
                                         ImGui::SetNextWindowPos({0.0f, 0.0f}, ImGuiCond_Always, {0.0f, 0.0f});
                                         ImGui::Begin("INSPECTOR", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
-                                                GetSelectedMapObject()->DrawInspectorContents();
+                                                if (GetSelectedMapObject()->base_registration->data.user_model) {
+                                                        static const char button_label[] = "Model";
+                                                        if (ImGui::Button(button_label)) GetSelectedMapObject()->SetUserModelAndOrTexture(ShowAndGetPathFromOpenDialog("obj"));
+                                                        std::string path_label_text = GetSelectedMapObject()->GetUserModel();
+                                                        if (path_label_text.size() > 32-sizeof(button_label)) path_label_text = "..." + path_label_text.substr(path_label_text.size() - (32-sizeof(button_label)));
+                                                        ImGui::SameLine();
+                                                        ImGui::TextUnformatted(path_label_text.c_str(), path_label_text.c_str()+path_label_text.size());
+                                                }
+                                                if (GetSelectedMapObject()->base_registration->data.user_texture) {
+                                                        static const char button_label[] = "Texture";
+                                                        if (ImGui::Button(button_label)) GetSelectedMapObject()->SetUserModelAndOrTexture("", ShowAndGetPathFromOpenDialog("png"));
+                                                        std::string path_label_text = GetSelectedMapObject()->GetUserTexture();
+                                                        if (path_label_text.size() > 32-sizeof(button_label)) path_label_text = "..." + path_label_text.substr(path_label_text.size() - (32-sizeof(button_label)));
+                                                        ImGui::SameLine();
+                                                        ImGui::TextUnformatted(path_label_text.c_str(), path_label_text.c_str()+path_label_text.size());
+                                                }
+                                                if (GetSelectedMapObject()->base_registration->data.position) {
+                                                        float previous_position[3] = {GetSelectedMapObject()->mesh_instance->position[0], GetSelectedMapObject()->mesh_instance->position[1], GetSelectedMapObject()->mesh_instance->position[2]};
+                                                        if (ImGui::DragFloat3("POSITION", GetSelectedMapObject()->mesh_instance->position, (gw.key_states[GWindower::KEY_LEFT_ALT] ? POSITION_SNAP*MODKEY_SNAP_FRACTION : POSITION_SNAP), 0.0f, 0.0f, "%.3f", ImGuiSliderFlags_NoSpeedTweaks)) {
+                                                                if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !gw.key_states[GWindower::KEY_LEFT_ALT]) { // round if non-modkey click-dragging
+                                                                        if (GetSelectedMapObject()->mesh_instance->position[0] != previous_position[0]) GetSelectedMapObject()->mesh_instance->position[0] = std::round(GetSelectedMapObject()->mesh_instance->position[0] / POSITION_SNAP) * POSITION_SNAP;
+                                                                        if (GetSelectedMapObject()->mesh_instance->position[1] != previous_position[1]) GetSelectedMapObject()->mesh_instance->position[1] = std::round(GetSelectedMapObject()->mesh_instance->position[1] / POSITION_SNAP) * POSITION_SNAP;
+                                                                        if (GetSelectedMapObject()->mesh_instance->position[2] != previous_position[2]) GetSelectedMapObject()->mesh_instance->position[2] = std::round(GetSelectedMapObject()->mesh_instance->position[2] / POSITION_SNAP) * POSITION_SNAP;
+                                                                }
+                                                        }
+                                                }
+                                                if (GetSelectedMapObject()->base_registration->data.rotation) {
+                                                        float3 euler = GetSelectedMapObject()->GetEuler();
+                                                        float3 previous_euler = euler;
+                                                        if (ImGui::DragFloat3("ROTATION", (float*)&euler, (gw.key_states[GWindower::KEY_LEFT_ALT] ? ROTATION_SNAP*MODKEY_SNAP_FRACTION : ROTATION_SNAP), 0.0f, 0.0f, "%.3f", ImGuiSliderFlags_NoSpeedTweaks)) {
+                                                                if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !gw.key_states[GWindower::KEY_LEFT_ALT]) { // round to multiple of target rotation fraction if non-modkey click-dragging
+                                                                        if (euler.x != previous_euler.x) euler.x = std::round(euler.x / ROTATION_SNAP) * ROTATION_SNAP;
+                                                                        if (euler.y != previous_euler.y) euler.y = std::round(euler.y / ROTATION_SNAP) * ROTATION_SNAP;
+                                                                        if (euler.z != previous_euler.z) euler.z = std::round(euler.z / ROTATION_SNAP) * ROTATION_SNAP;
+                                                                }
+                                                                GetSelectedMapObject()->SetEuler(euler);
+                                                        }
+                                                }
+                                                if (GetSelectedMapObject()->base_registration->data.scale) {
+                                                        float previous_scale[3] = {GetSelectedMapObject()->mesh_instance->scale[0], GetSelectedMapObject()->mesh_instance->scale[1], GetSelectedMapObject()->mesh_instance->scale[2]};
+                                                        if (ImGui::DragFloat3("SCALE", GetSelectedMapObject()->mesh_instance->scale, (gw.key_states[GWindower::KEY_LEFT_ALT] ? SCALE_SNAP*MODKEY_SNAP_FRACTION : SCALE_SNAP), 0.0f, 0.0f, "%.3f", ImGuiSliderFlags_NoSpeedTweaks)) {
+                                                                if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !gw.key_states[GWindower::KEY_LEFT_ALT]) { // round if non-modkey click-dragging
+                                                                        if (GetSelectedMapObject()->mesh_instance->scale[0] != previous_scale[0]) GetSelectedMapObject()->mesh_instance->scale[0] = std::round(GetSelectedMapObject()->mesh_instance->scale[0] / SCALE_SNAP) * SCALE_SNAP;
+                                                                        if (GetSelectedMapObject()->mesh_instance->scale[1] != previous_scale[1]) GetSelectedMapObject()->mesh_instance->scale[1] = std::round(GetSelectedMapObject()->mesh_instance->scale[1] / SCALE_SNAP) * SCALE_SNAP;
+                                                                        if (GetSelectedMapObject()->mesh_instance->scale[2] != previous_scale[2]) GetSelectedMapObject()->mesh_instance->scale[2] = std::round(GetSelectedMapObject()->mesh_instance->scale[2] / SCALE_SNAP) * SCALE_SNAP;
+                                                                }
+                                                        }
+                                                }
+                                                if (GetSelectedMapObject()->base_registration->data.color) {
+                                                        ImVec4 color = ImGui::ColorConvertU32ToFloat4(GetSelectedMapObject()->mesh_instance->color_RGBA);
+                                                        float _temp;
+                                                        _temp = color.x; color.x = color.w; color.w = _temp;
+                                                        _temp = color.y; color.y = color.z; color.z = _temp;
+                                                        ImGui::ColorPicker4("COLOR", (float*)&color);
+                                                        _temp = color.x; color.x = color.w; color.w = _temp;
+                                                        _temp = color.y; color.y = color.z; color.z = _temp;
+                                                        GetSelectedMapObject()->mesh_instance->color_RGBA = ImGui::ColorConvertFloat4ToU32(color);
+                                                }
+                                                if (GetSelectedMapObject()->extra_data.size() > 0) { ImGui::NewLine();
+                                                        uint64_t _uid = 0;
+                                                        for (auto& [label, val] : GetSelectedMapObject()->extra_data.items()) { ImGui::PushID(_uid); switch (val.type()) { default: break;
+                                                                case (nlohmann::json::value_t::boolean): { bool _val = val;
+                                                                        ImGui::Checkbox(label.c_str(), &_val); val = _val;
+                                                                } break;
+                                                                case (nlohmann::json::value_t::number_integer): { int64_t _val = val;
+                                                                        ImGui::InputScalar(label.c_str(), ImGuiDataType_S64, &_val); val = _val;
+                                                                } break;
+                                                                case (nlohmann::json::value_t::number_unsigned): { uint64_t _val = val;
+                                                                        ImGui::InputScalar(label.c_str(), ImGuiDataType_U64, &_val); val = _val;
+                                                                } break;
+                                                                case (nlohmann::json::value_t::number_float): { float _val = val;
+                                                                        ImGui::InputFloat(label.c_str(), &_val, 0, 0, "%f"); val = _val;
+                                                                } break;
+                                                                case (nlohmann::json::value_t::string): { std::string _val = val;
+                                                                        ImGui::InputText(label.c_str(), &_val); val = _val;
+                                                                } break;
+                                                        } ImGui::PopID(); _uid++; }
+                                                }
                                         } ImGui::End();
                                 }
 
