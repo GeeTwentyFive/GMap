@@ -385,7 +385,7 @@ int main(int argc, char* argv[]) { try {
                 if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !controlling_camera && !ImGui::GetIO().WantCaptureMouse && !_obj_pick_ray_casted) { _obj_pick_ray_casted = true;
                         float closest_hit_map_object_distance = FLT_MAX;
                         for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) {
-                                gcollision2::AABB map_object_instance_aabb = map_object_instance->WorldAABB(); if (map_object_instance_aabb.ContainsPoint(float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]})) continue;  // (skip if camera is inside of obj (to make it so you can select objs inside of other objs))
+                                gcollision2::AABB map_object_instance_aabb = map_object_instance->WorldAABB();
                                 float hit_map_object_distance;
                                 if (gcollision2::IntersectRayAABB(
                                         float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]},
@@ -414,7 +414,7 @@ int main(int argc, char* argv[]) { try {
                                         float3 target_point;
                                         float closest_hit_map_object_distance = FLT_MAX;
                                         for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) { if (map_object_instance.get() == GetSelectedMapObject()) continue;  // (ignore selected obj)
-                                                gcollision2::AABB map_object_instance_aabb = map_object_instance->WorldAABB(); if (map_object_instance_aabb.ContainsPoint(float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]})) continue;  // (skip if camera is inside of obj (to make it so you can select objs inside of other objs))
+                                                gcollision2::AABB map_object_instance_aabb = map_object_instance->WorldAABB();
                                                 float hit_map_object_distance;
                                                 float3 hit_map_object_point;
                                                 if (gcollision2::IntersectRayAABB(
@@ -439,17 +439,17 @@ int main(int argc, char* argv[]) { try {
                                         float3 target_point, target_normal;
                                         float closest_hit_map_object_distance = FLT_MAX;
                                         for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) { if (map_object_instance.get() == GetSelectedMapObject()) continue;  // (ignore selected obj)
-                                                gcollision2::AABB map_object_instance_aabb = map_object_instance->WorldAABB(); if (map_object_instance_aabb.ContainsPoint(float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]})) continue;  // (skip if camera is inside of obj (to make it so you can select objs inside of other objs))
+                                                gcollision2::AABB map_object_instance_aabb = map_object_instance->WorldAABB();
                                                 float hit_map_object_distance;
-                                                float3 hit_map_object_point, hit_map_object_normal;
+                                                float3 hit_map_object_point, hit_map_object_normal; bool ray_inside;
                                                 if (gcollision2::IntersectRayAABB(
                                                         float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]},
                                                         GMisc3DMath::ScreenToWorldRay(gw.mouse_x, gw.mouse_y, gw.window_width, gw.window_height, (float4x4*)gr3d.ViewProjection()),
                                                         map_object_instance_aabb, &hit_map_object_distance,
-                                                        &hit_map_object_point, &hit_map_object_normal
+                                                        &hit_map_object_point, &hit_map_object_normal, &ray_inside
                                                 )) if (hit_map_object_distance < closest_hit_map_object_distance) { closest_hit_map_object_distance = hit_map_object_distance;
                                                         target_point = hit_map_object_point;
-                                                        target_normal = hit_map_object_normal;
+                                                        target_normal = (ray_inside ? -hit_map_object_normal : hit_map_object_normal);
                                                 }
                                         }
                                         if (closest_hit_map_object_distance != FLT_MAX) {
