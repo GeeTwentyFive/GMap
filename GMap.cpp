@@ -429,7 +429,7 @@ int main(int argc, char* argv[]) { try {
                                         if (closest_hit_map_object_distance != FLT_MAX) {
                                                 const float4x4 lookat_matrix = linalg::lookat_matrix(
                                                         float3{GetSelectedMapObject()->mesh_instance->position[0], GetSelectedMapObject()->mesh_instance->position[1], GetSelectedMapObject()->mesh_instance->position[2]},
-                                                        target_point, float3{0, 1, 0}
+                                                        target_point, float3{0, 1, 0}, linalg::fwd_axis::pos_z
                                                 );
                                                 const float4 lookat_quat = linalg::rotation_quat(float3x3{lookat_matrix.row(0).xyz(), lookat_matrix.row(1).xyz(), lookat_matrix.row(2).xyz()});
                                                 GetSelectedMapObject()->mesh_instance->rotation[0] = lookat_quat.x; GetSelectedMapObject()->mesh_instance->rotation[1] = lookat_quat.y; GetSelectedMapObject()->mesh_instance->rotation[2] = lookat_quat.z; GetSelectedMapObject()->mesh_instance->rotation[3] = lookat_quat.w;
