@@ -52,6 +52,8 @@ const float POSITION_SNAP = 1.0f;
 const float ROTATION_SNAP = 180.0f/32.0f;
 const float SCALE_SNAP = 1.0f;
 
+const float PLANAR_SNAP_FRACTION = 1.0f/8.0f;
+
 const char USAGE_TEXT[] = ""
         "USAGE:\n"
         "- While right mouse button is held down:\n"
@@ -433,14 +435,15 @@ int main(int argc, char* argv[]) { try {
         for (;;) { // MAIN LOOP
                 double delta_time = gfp.Wait();
 
-                const bool mouse_locked = gw.mouse_button_states[GWindower::MOUSEBUTTON_RIGHT];
+                const bool controlling_camera = gw.mouse_button_states[GWindower::MOUSEBUTTON_RIGHT];
 
-                bool window_should_close = !gw.Update(mouse_locked, false, 0.0, true);
+                bool window_should_close = !gw.Update(controlling_camera, false, 0.0, true);
 
-                if (mouse_locked) {
+                static int camera_move_speed = STARTING_CAMERA_MOVE_SPEED;
+
+                if (controlling_camera && !gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT]) {
                         gr3d.camera_yaw += gw.mouse_x * CAMERA_SENSITIVITY;
                         gr3d.camera_pitch += gw.mouse_y * CAMERA_SENSITIVITY;
-                        static int camera_move_speed = STARTING_CAMERA_MOVE_SPEED;
                         if (gw.mouse_scroll_delta > 0.5 || gw.key_states[GWindower::KEY_UP]) camera_move_speed *= 2;
                         if (gw.mouse_scroll_delta < -0.5 || gw.key_states[GWindower::KEY_DOWN]) camera_move_speed /= 2;
                         if (camera_move_speed < 1) camera_move_speed = 1;
@@ -458,7 +461,7 @@ int main(int argc, char* argv[]) { try {
                 }
 
                 static bool _obj_pick_ray_casted = false;
-                if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !mouse_locked && !ImGui::GetIO().WantCaptureMouse && !_obj_pick_ray_casted) { _obj_pick_ray_casted = true;
+                if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !controlling_camera && !ImGui::GetIO().WantCaptureMouse && !_obj_pick_ray_casted) { _obj_pick_ray_casted = true;
                         float closest_hit_map_object_distance = FLT_MAX;
                         for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) {
                                 gcollision2::AABB map_object_instance_aabb = map_object_instance->WorldAABB(); if (map_object_instance_aabb.ContainsPoint(float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]})) continue;  // (skip if camera is inside of obj (to make it so you can select objs inside of other objs))
@@ -503,13 +506,30 @@ int main(int argc, char* argv[]) { try {
                                         }
                                 }
                                 if (closest_hit_map_object_distance != FLT_MAX) {
-                                        const float3 align_offset = (target_normal * GetSelectedMapObject()->LocalAABB()->GetSize()/2.0f) - GetSelectedMapObject()->LocalAABB()->GetCenterPos();
+                                        const float3 align_offset = (target_normal * GetSelectedMapObject()->WorldAABB().GetSize()/2.0f) - GetSelectedMapObject()->LocalAABB()->GetCenterPos();
                                         if (gw.key_states[GWindower::KEY_LEFT_SHIFT]) target_point = linalg::select(linalg::abs(target_normal), target_point, linalg::round(target_point / POSITION_SNAP) * POSITION_SNAP);
                                         GetSelectedMapObject()->mesh_instance->position[0] = target_point.x + align_offset.x; GetSelectedMapObject()->mesh_instance->position[1] = target_point.y + align_offset.y; GetSelectedMapObject()->mesh_instance->position[2] = target_point.z + align_offset.z;
                                 }
                         }
 
                         const float camera_yaw_offsetted_45 = (uint16_t)(gr3d.camera_yaw + USHRT_MAX/8); // offsetting by 45-degrees (PI/4) to make it so the axes line up neatly for conditional checks (otherwise -Z (angle 0 (forward)) axis alignment check would be both less than 0 *and* greater than 0) (...might make more sense if you visualize it in your head (starts off as like a pizza sliced into 4 slices making an 'X' shape, then rotated 45-degrees to make the slice seams into a '+' shape))  // (re-casting to ushort to force ushort overflow)
+
+                        if (controlling_camera && gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT]) {
+                                if (gw.key_states[GWindower::KEY_LEFT_SHIFT]) { if (GetSelectedMapObject()->base_registration->data.rotation) {
+                                        // TODO
+                                }}
+                                else if (gw.key_states[GWindower::KEY_LEFT_ALT]) { if (GetSelectedMapObject()->base_registration->data.scale) {
+                                        // TODO
+                                }} else { if (GetSelectedMapObject()->base_registration->data.position) {
+                                        float new_y = (-gw.mouse_y) * POSITION_SNAP * PLANAR_SNAP_FRACTION;
+                                        GetSelectedMapObject()->mesh_instance->position[1] += new_y; gr3d.camera_pos[1] += new_y;
+                                        float new_x_or_z = (-gw.mouse_x) * POSITION_SNAP * PLANAR_SNAP_FRACTION;
+                                        if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) { GetSelectedMapObject()->mesh_instance->position[0] += new_x_or_z; gr3d.camera_pos[0] += new_x_or_z; }
+                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) { GetSelectedMapObject()->mesh_instance->position[2] += new_x_or_z; gr3d.camera_pos[2] += new_x_or_z; }
+                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*2 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*3) { GetSelectedMapObject()->mesh_instance->position[0] -= new_x_or_z; gr3d.camera_pos[0] -= new_x_or_z; }
+                                        else { GetSelectedMapObject()->mesh_instance->position[2] -= new_x_or_z; gr3d.camera_pos[2] -= new_x_or_z; };
+                                }}
+                        }
 
                         static bool _arrow_up_move_pressed = false;
                         if (gw.key_states[GWindower::KEY_UP] && !_arrow_up_move_pressed) { _arrow_up_move_pressed = true;
@@ -618,7 +638,7 @@ int main(int argc, char* argv[]) { try {
                                                 if (ImGui::Button("Cancel")) show_quit_dialog = false;
                                         } ImGui::End();
                                 }
-                        } ImGui::Render(); if (mouse_locked) ImGui::SetWindowFocus(); // (unfocus GUI if controlling camera)
+                        } ImGui::Render(); if (controlling_camera) ImGui::SetWindowFocus(); // (unfocus GUI if controlling camera)
                 }
 
                 selected_map_object_changed = false;
