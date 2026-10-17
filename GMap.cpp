@@ -64,7 +64,7 @@ const char USAGE_TEXT[] = ""
         "    - Click = select/deselect object\n"
         "    - 0 = reset camera position to 0, 0, 0\n"
         "- Del = delete selected object\n"
-        "- Alt+D = duplicate selected object"
+        "- Alt+C = clone selected object"
 "";
 
 
@@ -288,7 +288,7 @@ int main(int argc, char* argv[]) { try {
                                 }
                         }
                         if (base_registration->data.rotation) {
-                                float3 euler = GetEuler(); euler += 0.0f;  // (to prevent "-0.0" in GUI)
+                                float3 euler = GetEuler();
                                 float3 previous_euler = euler;
                                 if (ImGui::DragFloat3("ROTATION", (float*)&euler, ROTATION_SNAP)) {
                                         if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !gw.key_states[GWindower::KEY_LEFT_ALT]) { // round to multiple of target rotation fraction if click-dragging
@@ -480,9 +480,9 @@ int main(int argc, char* argv[]) { try {
 
                 if (GetSelectedMapObject() != nullptr) {
                         static bool _cloned = false;
-                        if (gw.key_states[GWindower::KEY_LEFT_ALT] && gw.key_states[GWindower::KEY_D] && GetSelectedMapObject() != nullptr && !_cloned) { _cloned = true;
+                        if (gw.key_states[GWindower::KEY_LEFT_ALT] && gw.key_states[GWindower::KEY_C] && GetSelectedMapObject() != nullptr && !_cloned) { _cloned = true;
                                 SetSelectedMapObject(GetSelectedMapObject()->Clone());
-                        } else if (!gw.key_states[GWindower::KEY_D]) _cloned = false;
+                        } else if (!gw.key_states[GWindower::KEY_C]) _cloned = false;
 
                         if (gw.key_states[GWindower::KEY_DELETE] && GetSelectedMapObject() != nullptr) {
                                 GetSelectedMapObject()->Delete();
