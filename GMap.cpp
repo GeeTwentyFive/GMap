@@ -383,6 +383,7 @@ int main(int argc, char* argv[]) { try {
 
                 static bool _obj_pick_ray_casted = false;
                 if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !controlling_camera && !ImGui::GetIO().WantCaptureMouse && !_obj_pick_ray_casted) { _obj_pick_ray_casted = true;
+                        MapObjectInstance* closest_hit_map_object = nullptr;
                         float closest_hit_map_object_distance = FLT_MAX;
                         for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) {
                                 gcollision2::AABB map_object_instance_aabb = map_object_instance->WorldAABB();
@@ -392,10 +393,11 @@ int main(int argc, char* argv[]) { try {
                                         GMisc3DMath::ScreenToWorldRay(gw.mouse_x, gw.mouse_y, gw.window_width, gw.window_height, (float4x4*)gr3d.ViewProjection()),
                                         map_object_instance_aabb, &hit_map_object_distance
                                 )) if (hit_map_object_distance < closest_hit_map_object_distance) { closest_hit_map_object_distance = hit_map_object_distance;
-                                        SetSelectedMapObject(map_object_instance.get());
+                                        closest_hit_map_object = map_object_instance.get();
                                 }
                         }
-                        if (closest_hit_map_object_distance == FLT_MAX) SetSelectedMapObject();  // (none hit; deselect)
+                        if (closest_hit_map_object_distance != FLT_MAX) SetSelectedMapObject(closest_hit_map_object);
+                        else SetSelectedMapObject();  // (none hit; deselect)
                 } else if (!gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT]) _obj_pick_ray_casted = false;
 
                 if (GetSelectedMapObject() != nullptr) {
@@ -567,6 +569,20 @@ int main(int argc, char* argv[]) { try {
                 static auto DrawAABB = [&](const gcollision2::AABB* aabb, uint32_t color_RGBA = 0xFFFFFFFF) { glr3d.DrawLine(aabb->min.x, aabb->min.y, aabb->min.z, aabb->min.x, aabb->max.y, aabb->min.z, color_RGBA); glr3d.DrawLine(aabb->min.x, aabb->max.y, aabb->min.z, aabb->max.x, aabb->max.y, aabb->min.z, color_RGBA); glr3d.DrawLine(aabb->max.x, aabb->max.y, aabb->min.z, aabb->max.x, aabb->min.y, aabb->min.z, color_RGBA); glr3d.DrawLine(aabb->max.x, aabb->min.y, aabb->min.z, aabb->min.x, aabb->min.y, aabb->min.z, color_RGBA); glr3d.DrawLine(aabb->min.x, aabb->min.y, aabb->max.z, aabb->min.x, aabb->max.y, aabb->max.z, color_RGBA); glr3d.DrawLine(aabb->min.x, aabb->max.y, aabb->max.z, aabb->max.x, aabb->max.y, aabb->max.z, color_RGBA); glr3d.DrawLine(aabb->max.x, aabb->max.y, aabb->max.z, aabb->max.x, aabb->min.y, aabb->max.z, color_RGBA); glr3d.DrawLine(aabb->max.x, aabb->min.y, aabb->max.z, aabb->min.x, aabb->min.y, aabb->max.z, color_RGBA); glr3d.DrawLine(aabb->min.x, aabb->min.y, aabb->min.z, aabb->min.x, aabb->min.y, aabb->max.z, color_RGBA); glr3d.DrawLine(aabb->min.x, aabb->max.y, aabb->min.z, aabb->min.x, aabb->max.y, aabb->max.z, color_RGBA); glr3d.DrawLine(aabb->max.x, aabb->max.y, aabb->min.z, aabb->max.x, aabb->max.y, aabb->max.z, color_RGBA); glr3d.DrawLine(aabb->max.x, aabb->min.y, aabb->min.z, aabb->max.x, aabb->min.y, aabb->max.z, color_RGBA); };
 
                 if (show_ui) { if (GetSelectedMapObject() != nullptr) { const gcollision2::AABB aabb = GetSelectedMapObject()->WorldAABB(); DrawAABB(&aabb); }
+                        if (GetSelectedMapObject() != nullptr && (GetSelectedMapObject()->base_registration->data.position || GetSelectedMapObject()->base_registration->data.rotation || GetSelectedMapObject()->base_registration->data.scale)) {
+                                const float gizmo_aabb_scale = linalg::length(float3{GetSelectedMapObject()->mesh_instance->position[0] - gr3d.camera_pos[0], GetSelectedMapObject()->mesh_instance->position[1] - gr3d.camera_pos[1], GetSelectedMapObject()->mesh_instance->position[2] - gr3d.camera_pos[2]});
+                                gcollision2::AABB gizmo_x_aabb = {{-1.0f/8.0f * gizmo_aabb_scale, -1.0f/64.0f * gizmo_aabb_scale, -1.0f/64.0f * gizmo_aabb_scale}, {1.0f/8.0f * gizmo_aabb_scale, 1.0f/64.0f * gizmo_aabb_scale, 1.0f/64.0f * gizmo_aabb_scale}};
+                                gcollision2::AABB gizmo_y_aabb = {{-1.0f/64.0f * gizmo_aabb_scale, -1.0f/8.0f * gizmo_aabb_scale, -1.0f/64.0f * gizmo_aabb_scale}, {1.0f/64.0f * gizmo_aabb_scale, 1.0f/8.0f * gizmo_aabb_scale, 1.0f/64.0f * gizmo_aabb_scale}};
+                                gcollision2::AABB gizmo_z_aabb = {{-1.0f/64.0f * gizmo_aabb_scale, -1.0f/64.0f * gizmo_aabb_scale, -1.0f/8.0f * gizmo_aabb_scale}, {1.0f/64.0f * gizmo_aabb_scale, 1.0f/64.0f * gizmo_aabb_scale, 1.0f/8.0f * gizmo_aabb_scale}};
+                                gizmo_x_aabb.SetCenterPos(float3{GetSelectedMapObject()->mesh_instance->position[0], GetSelectedMapObject()->mesh_instance->position[1], GetSelectedMapObject()->mesh_instance->position[2]}); gizmo_y_aabb.SetCenterPos(float3{GetSelectedMapObject()->mesh_instance->position[0], GetSelectedMapObject()->mesh_instance->position[1], GetSelectedMapObject()->mesh_instance->position[2]}); gizmo_z_aabb.SetCenterPos(float3{GetSelectedMapObject()->mesh_instance->position[0], GetSelectedMapObject()->mesh_instance->position[1], GetSelectedMapObject()->mesh_instance->position[2]});
+                                enum ActiveGizmoAxis { NONE, X, Y, Z };
+                                static ActiveGizmoAxis active_gizmo_axis = ActiveGizmoAxis::NONE;
+                                // if (!selected_map_object_just_changed) {
+                                //         // TODO
+                                // }
+                                DrawAABB(&gizmo_x_aabb, 0xFF0000FF); DrawAABB(&gizmo_y_aabb, 0x00FF00FF); DrawAABB(&gizmo_z_aabb, 0x0000FFFF);
+                        }
+
                         ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame(); ImGui::NewFrame(); { if (controlling_camera || (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !ImGui::GetIO().WantCaptureMouse)) ImGui::SetWindowFocus(); /* (unfocus GUI if controlling camera or clicked off) */ ImGui::SetNextWindowPos({0.0f, (float)gw.window_height}, ImGuiCond_Always, {0.0f, 1.0f}); ImGui::Begin("USAGE", NULL, (ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); { ImGui::TextUnformatted(USAGE_TEXT, USAGE_TEXT+sizeof(USAGE_TEXT)); } ImGui::End();
                                 ImGui::SetNextWindowPos({(float)gw.window_width, 0.0f}, ImGuiCond_Always, {1.0f, 0.0f});
                                 ImGui::Begin("ADD", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
