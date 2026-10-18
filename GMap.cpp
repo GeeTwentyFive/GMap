@@ -381,8 +381,67 @@ int main(int argc, char* argv[]) { try {
                         if (gw.key_states[GWindower::KEY_ZERO]) { gr3d.camera_pos[0] = 0; gr3d.camera_pos[1] = 0; gr3d.camera_pos[2] = 0; }
                 }
 
+                static bool show_ui = true;
+
+                static bool _show_ui_toggled = false;
+                if (gw.key_states[GWindower::KEY_LEFT_ALT] && gw.key_states[GWindower::KEY_H] && !_show_ui_toggled) { _show_ui_toggled = true; show_ui = !show_ui; }
+                else if (!gw.key_states[GWindower::KEY_H]) _show_ui_toggled = false;
+
+                static bool select_gizmo = false, last_gizmo_select_state = false;
+                last_gizmo_select_state = select_gizmo;
+                select_gizmo = gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT];
+
+                enum ActiveGizmoWidget { NONE, X, Y, Z };
+                static ActiveGizmoWidget active_gizmo_widget = ActiveGizmoWidget::NONE;
+
+                static auto DrawAABB = [&](const gcollision2::AABB* aabb, uint32_t color_RGBA = 0xFFFFFFFF) { glr3d.DrawLine(aabb->min.x, aabb->min.y, aabb->min.z, aabb->min.x, aabb->max.y, aabb->min.z, color_RGBA); glr3d.DrawLine(aabb->min.x, aabb->max.y, aabb->min.z, aabb->max.x, aabb->max.y, aabb->min.z, color_RGBA); glr3d.DrawLine(aabb->max.x, aabb->max.y, aabb->min.z, aabb->max.x, aabb->min.y, aabb->min.z, color_RGBA); glr3d.DrawLine(aabb->max.x, aabb->min.y, aabb->min.z, aabb->min.x, aabb->min.y, aabb->min.z, color_RGBA); glr3d.DrawLine(aabb->min.x, aabb->min.y, aabb->max.z, aabb->min.x, aabb->max.y, aabb->max.z, color_RGBA); glr3d.DrawLine(aabb->min.x, aabb->max.y, aabb->max.z, aabb->max.x, aabb->max.y, aabb->max.z, color_RGBA); glr3d.DrawLine(aabb->max.x, aabb->max.y, aabb->max.z, aabb->max.x, aabb->min.y, aabb->max.z, color_RGBA); glr3d.DrawLine(aabb->max.x, aabb->min.y, aabb->max.z, aabb->min.x, aabb->min.y, aabb->max.z, color_RGBA); glr3d.DrawLine(aabb->min.x, aabb->min.y, aabb->min.z, aabb->min.x, aabb->min.y, aabb->max.z, color_RGBA); glr3d.DrawLine(aabb->min.x, aabb->max.y, aabb->min.z, aabb->min.x, aabb->max.y, aabb->max.z, color_RGBA); glr3d.DrawLine(aabb->max.x, aabb->max.y, aabb->min.z, aabb->max.x, aabb->max.y, aabb->max.z, color_RGBA); glr3d.DrawLine(aabb->max.x, aabb->min.y, aabb->min.z, aabb->max.x, aabb->min.y, aabb->max.z, color_RGBA); };
+
+                if (show_ui) {
+                        if (GetSelectedMapObject() != nullptr && (GetSelectedMapObject()->base_registration->data.position || GetSelectedMapObject()->base_registration->data.rotation || GetSelectedMapObject()->base_registration->data.scale)) {
+                                const float gizmo_aabb_scale = linalg::length(float3{GetSelectedMapObject()->mesh_instance->position[0] - gr3d.camera_pos[0], GetSelectedMapObject()->mesh_instance->position[1] - gr3d.camera_pos[1], GetSelectedMapObject()->mesh_instance->position[2] - gr3d.camera_pos[2]});
+                                gcollision2::AABB gizmo_x_aabb = {{-1.0f/8.0f * gizmo_aabb_scale, -1.0f/64.0f * gizmo_aabb_scale, -1.0f/64.0f * gizmo_aabb_scale}, {1.0f/8.0f * gizmo_aabb_scale, 1.0f/64.0f * gizmo_aabb_scale, 1.0f/64.0f * gizmo_aabb_scale}};
+                                gcollision2::AABB gizmo_y_aabb = {{-1.0f/64.0f * gizmo_aabb_scale, -1.0f/8.0f * gizmo_aabb_scale, -1.0f/64.0f * gizmo_aabb_scale}, {1.0f/64.0f * gizmo_aabb_scale, 1.0f/8.0f * gizmo_aabb_scale, 1.0f/64.0f * gizmo_aabb_scale}};
+                                gcollision2::AABB gizmo_z_aabb = {{-1.0f/64.0f * gizmo_aabb_scale, -1.0f/64.0f * gizmo_aabb_scale, -1.0f/8.0f * gizmo_aabb_scale}, {1.0f/64.0f * gizmo_aabb_scale, 1.0f/64.0f * gizmo_aabb_scale, 1.0f/8.0f * gizmo_aabb_scale}};
+                                gizmo_x_aabb.SetCenterPos(float3{GetSelectedMapObject()->mesh_instance->position[0], GetSelectedMapObject()->mesh_instance->position[1], GetSelectedMapObject()->mesh_instance->position[2]}); gizmo_y_aabb.SetCenterPos(float3{GetSelectedMapObject()->mesh_instance->position[0], GetSelectedMapObject()->mesh_instance->position[1], GetSelectedMapObject()->mesh_instance->position[2]}); gizmo_z_aabb.SetCenterPos(float3{GetSelectedMapObject()->mesh_instance->position[0], GetSelectedMapObject()->mesh_instance->position[1], GetSelectedMapObject()->mesh_instance->position[2]});
+                                if (!select_gizmo) active_gizmo_widget = ActiveGizmoWidget::NONE;
+                                if (select_gizmo && (last_gizmo_select_state == false) && !selected_map_object_just_changed) {
+                                        float closest_hit_gizmo_widget_distance = FLT_MAX;
+                                        float distance;
+                                        const float3 ray_origin = {gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]};
+                                        const float3 ray_dir = GMisc3DMath::ScreenToWorldRay(gw.mouse_x, gw.mouse_y, gw.window_width, gw.window_height, (float4x4*)gr3d.ViewProjection());
+                                        if (gcollision2::IntersectRayAABB(ray_origin, ray_dir,
+                                                gizmo_x_aabb, &distance
+                                        )) if (distance < closest_hit_gizmo_widget_distance) { closest_hit_gizmo_widget_distance = distance;
+                                                active_gizmo_widget = ActiveGizmoWidget::X;
+                                        }
+                                        if (gcollision2::IntersectRayAABB(ray_origin, ray_dir,
+                                                gizmo_y_aabb, &distance
+                                        )) if (distance < closest_hit_gizmo_widget_distance) { closest_hit_gizmo_widget_distance = distance;
+                                                active_gizmo_widget = ActiveGizmoWidget::Y;
+                                        }
+                                        if (gcollision2::IntersectRayAABB(ray_origin, ray_dir,
+                                                gizmo_z_aabb, &distance
+                                        )) if (distance < closest_hit_gizmo_widget_distance) { closest_hit_gizmo_widget_distance = distance;
+                                                active_gizmo_widget = ActiveGizmoWidget::Z;
+                                        }
+                                        if (closest_hit_gizmo_widget_distance == FLT_MAX) active_gizmo_widget = ActiveGizmoWidget::NONE;
+                                }
+                                switch (active_gizmo_widget) { case NONE: { DrawAABB(&gizmo_x_aabb, 0xFF0000FF); DrawAABB(&gizmo_y_aabb, 0x00FF00FF); DrawAABB(&gizmo_z_aabb, 0x0000FFFF); } break;
+                                        case X: { DrawAABB(&gizmo_x_aabb, 0xFF0000FF);
+                                                // TODO
+                                        } break;
+                                        case Y: { DrawAABB(&gizmo_y_aabb, 0x00FF00FF);
+                                                // TODO
+                                        } break;
+                                        case Z: { DrawAABB(&gizmo_z_aabb, 0x0000FFFF);
+                                                // TODO
+                                        } break;
+                                }
+                        }
+                }
+
                 static bool _obj_pick_ray_casted = false;
-                if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !controlling_camera && !ImGui::GetIO().WantCaptureMouse && !_obj_pick_ray_casted) { _obj_pick_ray_casted = true;
+                if (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !controlling_camera && (active_gizmo_widget == ActiveGizmoWidget::NONE) && !ImGui::GetIO().WantCaptureMouse && !_obj_pick_ray_casted) { _obj_pick_ray_casted = true;
                         MapObjectInstance* closest_hit_map_object = nullptr;
                         float closest_hit_map_object_distance = FLT_MAX;
                         for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) {
@@ -552,12 +611,6 @@ int main(int argc, char* argv[]) { try {
                         } else if (!gw.key_states[GWindower::KEY_RIGHT]) _arrow_right_move_pressed = false;
                 }
 
-                static bool show_ui = true;
-
-                static bool _show_ui_toggled = false;
-                if (gw.key_states[GWindower::KEY_LEFT_ALT] && gw.key_states[GWindower::KEY_H] && !_show_ui_toggled) { _show_ui_toggled = true; show_ui = !show_ui; }
-                else if (!gw.key_states[GWindower::KEY_H]) _show_ui_toggled = false;
-
                 static bool show_quit_dialog = false;
 
                 static bool _show_quit_dialog_toggled = false;
@@ -568,59 +621,9 @@ int main(int argc, char* argv[]) { try {
 
                 if (show_quit_dialog) show_ui = true;
 
-                static bool select_gizmo = false, last_gizmo_select_state = false;
-                last_gizmo_select_state = select_gizmo;
-                select_gizmo = gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT];
-
-                static auto DrawAABB = [&](const gcollision2::AABB* aabb, uint32_t color_RGBA = 0xFFFFFFFF) { glr3d.DrawLine(aabb->min.x, aabb->min.y, aabb->min.z, aabb->min.x, aabb->max.y, aabb->min.z, color_RGBA); glr3d.DrawLine(aabb->min.x, aabb->max.y, aabb->min.z, aabb->max.x, aabb->max.y, aabb->min.z, color_RGBA); glr3d.DrawLine(aabb->max.x, aabb->max.y, aabb->min.z, aabb->max.x, aabb->min.y, aabb->min.z, color_RGBA); glr3d.DrawLine(aabb->max.x, aabb->min.y, aabb->min.z, aabb->min.x, aabb->min.y, aabb->min.z, color_RGBA); glr3d.DrawLine(aabb->min.x, aabb->min.y, aabb->max.z, aabb->min.x, aabb->max.y, aabb->max.z, color_RGBA); glr3d.DrawLine(aabb->min.x, aabb->max.y, aabb->max.z, aabb->max.x, aabb->max.y, aabb->max.z, color_RGBA); glr3d.DrawLine(aabb->max.x, aabb->max.y, aabb->max.z, aabb->max.x, aabb->min.y, aabb->max.z, color_RGBA); glr3d.DrawLine(aabb->max.x, aabb->min.y, aabb->max.z, aabb->min.x, aabb->min.y, aabb->max.z, color_RGBA); glr3d.DrawLine(aabb->min.x, aabb->min.y, aabb->min.z, aabb->min.x, aabb->min.y, aabb->max.z, color_RGBA); glr3d.DrawLine(aabb->min.x, aabb->max.y, aabb->min.z, aabb->min.x, aabb->max.y, aabb->max.z, color_RGBA); glr3d.DrawLine(aabb->max.x, aabb->max.y, aabb->min.z, aabb->max.x, aabb->max.y, aabb->max.z, color_RGBA); glr3d.DrawLine(aabb->max.x, aabb->min.y, aabb->min.z, aabb->max.x, aabb->min.y, aabb->max.z, color_RGBA); };
-
                 if (show_ui) { if (GetSelectedMapObject() != nullptr) { const gcollision2::AABB aabb = GetSelectedMapObject()->WorldAABB(); DrawAABB(&aabb); }
-                        if (GetSelectedMapObject() != nullptr && (GetSelectedMapObject()->base_registration->data.position || GetSelectedMapObject()->base_registration->data.rotation || GetSelectedMapObject()->base_registration->data.scale)) {
-                                const float gizmo_aabb_scale = linalg::length(float3{GetSelectedMapObject()->mesh_instance->position[0] - gr3d.camera_pos[0], GetSelectedMapObject()->mesh_instance->position[1] - gr3d.camera_pos[1], GetSelectedMapObject()->mesh_instance->position[2] - gr3d.camera_pos[2]});
-                                gcollision2::AABB gizmo_x_aabb = {{-1.0f/8.0f * gizmo_aabb_scale, -1.0f/64.0f * gizmo_aabb_scale, -1.0f/64.0f * gizmo_aabb_scale}, {1.0f/8.0f * gizmo_aabb_scale, 1.0f/64.0f * gizmo_aabb_scale, 1.0f/64.0f * gizmo_aabb_scale}};
-                                gcollision2::AABB gizmo_y_aabb = {{-1.0f/64.0f * gizmo_aabb_scale, -1.0f/8.0f * gizmo_aabb_scale, -1.0f/64.0f * gizmo_aabb_scale}, {1.0f/64.0f * gizmo_aabb_scale, 1.0f/8.0f * gizmo_aabb_scale, 1.0f/64.0f * gizmo_aabb_scale}};
-                                gcollision2::AABB gizmo_z_aabb = {{-1.0f/64.0f * gizmo_aabb_scale, -1.0f/64.0f * gizmo_aabb_scale, -1.0f/8.0f * gizmo_aabb_scale}, {1.0f/64.0f * gizmo_aabb_scale, 1.0f/64.0f * gizmo_aabb_scale, 1.0f/8.0f * gizmo_aabb_scale}};
-                                gizmo_x_aabb.SetCenterPos(float3{GetSelectedMapObject()->mesh_instance->position[0], GetSelectedMapObject()->mesh_instance->position[1], GetSelectedMapObject()->mesh_instance->position[2]}); gizmo_y_aabb.SetCenterPos(float3{GetSelectedMapObject()->mesh_instance->position[0], GetSelectedMapObject()->mesh_instance->position[1], GetSelectedMapObject()->mesh_instance->position[2]}); gizmo_z_aabb.SetCenterPos(float3{GetSelectedMapObject()->mesh_instance->position[0], GetSelectedMapObject()->mesh_instance->position[1], GetSelectedMapObject()->mesh_instance->position[2]});
-                                enum ActiveGizmoWidget { NONE, X, Y, Z }; // TODO
-                                static ActiveGizmoWidget active_gizmo_widget = ActiveGizmoWidget::NONE;
-                                if (!select_gizmo) active_gizmo_widget = ActiveGizmoWidget::NONE;
-                                if (select_gizmo && (last_gizmo_select_state == false) && !selected_map_object_just_changed) {
-                                        float closest_hit_gizmo_widget_distance = FLT_MAX;
-                                        float distance;
-                                        const float3 ray_origin = {gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]};
-                                        const float3 ray_dir = GMisc3DMath::ScreenToWorldRay(gw.mouse_x, gw.mouse_y, gw.window_width, gw.window_height, (float4x4*)gr3d.ViewProjection());
-                                        if (gcollision2::IntersectRayAABB(ray_origin, ray_dir,
-                                                gizmo_x_aabb, &distance
-                                        )) if (distance < closest_hit_gizmo_widget_distance) { closest_hit_gizmo_widget_distance = distance;
-                                                active_gizmo_widget = ActiveGizmoWidget::X;
-                                        }
-                                        if (gcollision2::IntersectRayAABB(ray_origin, ray_dir,
-                                                gizmo_y_aabb, &distance
-                                        )) if (distance < closest_hit_gizmo_widget_distance) { closest_hit_gizmo_widget_distance = distance;
-                                                active_gizmo_widget = ActiveGizmoWidget::Y;
-                                        }
-                                        if (gcollision2::IntersectRayAABB(ray_origin, ray_dir,
-                                                gizmo_z_aabb, &distance
-                                        )) if (distance < closest_hit_gizmo_widget_distance) { closest_hit_gizmo_widget_distance = distance;
-                                                active_gizmo_widget = ActiveGizmoWidget::Z;
-                                        }
-                                        if (closest_hit_gizmo_widget_distance == FLT_MAX) active_gizmo_widget = ActiveGizmoWidget::NONE;
-                                }
-                                switch (active_gizmo_widget) { case NONE: { DrawAABB(&gizmo_x_aabb, 0xFF0000FF); DrawAABB(&gizmo_y_aabb, 0x00FF00FF); DrawAABB(&gizmo_z_aabb, 0x0000FFFF); } break;
-                                        case X: { DrawAABB(&gizmo_x_aabb, 0xFF0000FF);
-                                                // TODO
-                                        } break;
-                                        case Y: { DrawAABB(&gizmo_y_aabb, 0x00FF00FF);
-                                                // TODO
-                                        } break;
-                                        case Z: { DrawAABB(&gizmo_z_aabb, 0x0000FFFF);
-                                                // TODO
-                                        } break;
-                                }
-                        }
-
                         ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame(); ImGui::NewFrame(); { if (controlling_camera || (gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT] && !ImGui::GetIO().WantCaptureMouse)) ImGui::SetWindowFocus(); /* (unfocus GUI if controlling camera or clicked off) */ ImGui::SetNextWindowPos({0.0f, (float)gw.window_height}, ImGuiCond_Always, {0.0f, 1.0f}); ImGui::Begin("USAGE", NULL, (ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); { ImGui::TextUnformatted(USAGE_TEXT, USAGE_TEXT+sizeof(USAGE_TEXT)); } ImGui::End();
-                                ImGui::SetNextWindowPos({(float)gw.window_width, 0.0f}, ImGuiCond_Always, {1.0f, 0.0f});
+                                ImGui::SetNextWindowPos({(float)gw.window_width, 0.0f}, ImGuiCond_Always, {1.0f, 0.0f}); ImGui::SetNextWindowSizeConstraints({0.0f, 0.0f}, {gw.window_width/3.0f, FLT_MAX});
                                 ImGui::Begin("ADD", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
                                         for (const std::string& name : map_object_names) {
                                                 if (ImGui::Button(name.c_str())) SetSelectedMapObject(MapObjectInstance::Create(name, gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]));
@@ -628,7 +631,7 @@ int main(int argc, char* argv[]) { try {
                                 } ImGui::End();
 
                                 if (GetSelectedMapObject() != nullptr && !selected_map_object_just_changed) {
-                                        ImGui::SetNextWindowPos({0.0f, 0.0f}, ImGuiCond_Always, {0.0f, 0.0f});
+                                        ImGui::SetNextWindowPos({0.0f, 0.0f}, ImGuiCond_Always, {0.0f, 0.0f}); ImGui::SetNextWindowSizeConstraints({0.0f, 0.0f}, {gw.window_width/3.0f, FLT_MAX});
                                         ImGui::Begin("INSPECTOR", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
                                                 if (GetSelectedMapObject()->base_registration->data.user_model) {
                                                         static const char button_label[] = "Model";
