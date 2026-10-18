@@ -414,7 +414,7 @@ int main(int argc, char* argv[]) { try {
                         }
 
                         if (gw.mouse_button_states[GWindower::MOUSEBUTTON_MIDDLE]) {
-                                if (gw.key_states[GWindower::KEY_LEFT_ALT]) {  // lookat
+                                if (gw.key_states[GWindower::KEY_LEFT_ALT] && GetSelectedMapObject()->base_registration->data.rotation) {  // lookat
                                         float3 target_point;
                                         float closest_hit_map_object_distance = FLT_MAX;
                                         for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) { if (map_object_instance.get() == GetSelectedMapObject()) continue;  // (ignore selected obj)
@@ -439,7 +439,7 @@ int main(int argc, char* argv[]) { try {
                                                 GetSelectedMapObject()->mesh_instance->rotation[0] = lookat_quat.x; GetSelectedMapObject()->mesh_instance->rotation[1] = lookat_quat.y; GetSelectedMapObject()->mesh_instance->rotation[2] = lookat_quat.z; GetSelectedMapObject()->mesh_instance->rotation[3] = lookat_quat.w;
                                         }
                                 }
-                                else {  // surface snap
+                                else if (GetSelectedMapObject()->base_registration->data.position) {  // surface snap
                                         float3 target_point, target_normal;
                                         float closest_hit_map_object_distance = FLT_MAX;
                                         for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) { if (map_object_instance.get() == GetSelectedMapObject()) continue;  // (ignore selected obj)
