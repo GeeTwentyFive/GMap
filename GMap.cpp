@@ -52,6 +52,7 @@ const float POSITION_SNAP = 1.0f;
 const float ROTATION_SNAP = 180.0f/32.0f;
 const float SCALE_SNAP = 1.0f;
 
+const float GIZMO_SNAP_FRACTION = 1.0f/64.0f;
 const float MODKEY_SNAP_FRACTION = 1.0f/8.0f;
 const float ARROW_SNAP_FRACTION = 1.0f/8.0f;
 const float PLANAR_SNAP_FRACTION = 1.0f/64.0f;
@@ -362,12 +363,15 @@ int main(int argc, char* argv[]) { try {
 
                 static int camera_move_speed = STARTING_CAMERA_MOVE_SPEED;
 
-                if (controlling_camera && !gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT]) {
-                        gr3d.camera_yaw += gw.mouse_x * CAMERA_SENSITIVITY;
-                        gr3d.camera_pitch += gw.mouse_y * CAMERA_SENSITIVITY;
+                if (!ImGui::GetIO().WantCaptureMouse) {
                         if (gw.mouse_scroll_delta > 0.5 || gw.key_states[GWindower::KEY_UP]) camera_move_speed *= 2;
                         if (gw.mouse_scroll_delta < -0.5 || gw.key_states[GWindower::KEY_DOWN]) camera_move_speed /= 2;
                         if (camera_move_speed < 1) camera_move_speed = 1;
+                }
+
+                if (controlling_camera && !gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT]) {
+                        gr3d.camera_yaw += gw.mouse_x * CAMERA_SENSITIVITY;
+                        gr3d.camera_pitch += gw.mouse_y * CAMERA_SENSITIVITY;
                         gr3d.camera_pos[1] += (-gw.key_states[GWindower::KEY_LEFT_CONTROL] + gw.key_states[GWindower::KEY_SPACE]) * camera_move_speed * delta_time;
                         float2 move_dir = float2{
                                 (float)(-gw.key_states[GWindower::KEY_A] + gw.key_states[GWindower::KEY_D]),
@@ -387,11 +391,11 @@ int main(int argc, char* argv[]) { try {
                 if (gw.key_states[GWindower::KEY_LEFT_ALT] && gw.key_states[GWindower::KEY_H] && !_show_ui_toggled) { _show_ui_toggled = true; show_ui = !show_ui; }
                 else if (!gw.key_states[GWindower::KEY_H]) _show_ui_toggled = false;
 
-                static bool select_gizmo = false, last_gizmo_select_state = false;
-                last_gizmo_select_state = select_gizmo;
+                static bool select_gizmo = false, last_select_gizmo_state = false;
+                last_select_gizmo_state = select_gizmo;
                 select_gizmo = gw.mouse_button_states[GWindower::MOUSEBUTTON_LEFT];
 
-                enum ActiveGizmoWidget { NONE, X_POS, Y_POS, Z_POS, X_NEG, Y_NEG, Z_NEG };
+                enum ActiveGizmoWidget { NONE = -1, X_POS = 0, X_NEG = 1, Y_POS = 2, Y_NEG = 3, Z_POS = 4, Z_NEG = 5, _last };
                 static ActiveGizmoWidget active_gizmo_widget = ActiveGizmoWidget::NONE;
 
                 static auto DrawAABB = [&](const gcollision2::AABB* aabb, uint32_t color_RGBA = 0xFFFFFFFF) { glr3d.DrawLine(aabb->min.x, aabb->min.y, aabb->min.z, aabb->min.x, aabb->max.y, aabb->min.z, color_RGBA); glr3d.DrawLine(aabb->min.x, aabb->max.y, aabb->min.z, aabb->max.x, aabb->max.y, aabb->min.z, color_RGBA); glr3d.DrawLine(aabb->max.x, aabb->max.y, aabb->min.z, aabb->max.x, aabb->min.y, aabb->min.z, color_RGBA); glr3d.DrawLine(aabb->max.x, aabb->min.y, aabb->min.z, aabb->min.x, aabb->min.y, aabb->min.z, color_RGBA); glr3d.DrawLine(aabb->min.x, aabb->min.y, aabb->max.z, aabb->min.x, aabb->max.y, aabb->max.z, color_RGBA); glr3d.DrawLine(aabb->min.x, aabb->max.y, aabb->max.z, aabb->max.x, aabb->max.y, aabb->max.z, color_RGBA); glr3d.DrawLine(aabb->max.x, aabb->max.y, aabb->max.z, aabb->max.x, aabb->min.y, aabb->max.z, color_RGBA); glr3d.DrawLine(aabb->max.x, aabb->min.y, aabb->max.z, aabb->min.x, aabb->min.y, aabb->max.z, color_RGBA); glr3d.DrawLine(aabb->min.x, aabb->min.y, aabb->min.z, aabb->min.x, aabb->min.y, aabb->max.z, color_RGBA); glr3d.DrawLine(aabb->min.x, aabb->max.y, aabb->min.z, aabb->min.x, aabb->max.y, aabb->max.z, color_RGBA); glr3d.DrawLine(aabb->max.x, aabb->max.y, aabb->min.z, aabb->max.x, aabb->max.y, aabb->max.z, color_RGBA); glr3d.DrawLine(aabb->max.x, aabb->min.y, aabb->min.z, aabb->max.x, aabb->min.y, aabb->max.z, color_RGBA); };
@@ -399,62 +403,112 @@ int main(int argc, char* argv[]) { try {
                 if (show_ui) {
                         if (GetSelectedMapObject() != nullptr && (GetSelectedMapObject()->base_registration->data.position || GetSelectedMapObject()->base_registration->data.rotation || GetSelectedMapObject()->base_registration->data.scale)) {
                                 // temp:
-                                const float GIZMO_AABB_LENGTH = 1.0f/8.0f;
-                                const float GIZMO_AABB_WIDTH = 1.0f/32.0f;
+                                const int GIZMO_WIDGET_COUNT = ActiveGizmoWidget::_last;
+                                const uint32_t GIZMO_WIDGET_COLORS[GIZMO_WIDGET_COUNT] = { 0xFF0000FF, 0x800000FF, 0x00FF00FF, 0x008000FF, 0x0000FFFF, 0x000080FF };
+                                const float GIZMO_WIDGET_LENGTH = 1.0f/4.0f;
+                                const float GIZMO_WIDGET_WIDTH = 1.0f/32.0f;
                                 const float3 target_pos = float3{GetSelectedMapObject()->mesh_instance->position};
                                 const float3 camera_pos = float3{gr3d.camera_pos};
-                                const float gizmo_aabb_scale = linalg::length(target_pos - camera_pos);
-                                const float gizmo_aabb_length = GIZMO_AABB_LENGTH * gizmo_aabb_scale;
-                                const float gizmo_aabb_width = GIZMO_AABB_WIDTH * gizmo_aabb_scale;
-                                const float gizmo_widget_gap = gizmo_aabb_width/2.0f;
-                                gcollision2::AABB gizmo_x_positive_aabb = {{target_pos.x+gizmo_widget_gap, target_pos.y - gizmo_aabb_width/2.0f, target_pos.z - gizmo_aabb_width/2.0f}, {target_pos.x+gizmo_widget_gap + gizmo_aabb_length, target_pos.y + gizmo_aabb_width/2.0f, target_pos.z + gizmo_aabb_width/2.0f}};
-                                gcollision2::AABB gizmo_x_negative_aabb = {{target_pos.x-gizmo_widget_gap - gizmo_aabb_length, target_pos.y - gizmo_aabb_width/2.0f, target_pos.z - gizmo_aabb_width/2.0f}, {target_pos.x-gizmo_widget_gap, target_pos.y + gizmo_aabb_width/2.0f, target_pos.z + gizmo_aabb_width/2.0f}};
-                                gcollision2::AABB gizmo_y_positive_aabb = {{target_pos.x - gizmo_aabb_width/2.0f, target_pos.y+gizmo_widget_gap, target_pos.z - gizmo_aabb_width/2.0f}, {target_pos.x + gizmo_aabb_width/2.0f, target_pos.y+gizmo_widget_gap + gizmo_aabb_length, target_pos.z + gizmo_aabb_width/2.0f}};
-                                gcollision2::AABB gizmo_y_negative_aabb = {{target_pos.x - gizmo_aabb_width/2.0f, target_pos.y-gizmo_widget_gap - gizmo_aabb_length, target_pos.z - gizmo_aabb_width/2.0f}, {target_pos.x + gizmo_aabb_width/2.0f, target_pos.y-gizmo_widget_gap, target_pos.z + gizmo_aabb_width/2.0f}};
-                                gcollision2::AABB gizmo_z_positive_aabb = {{target_pos.x - gizmo_aabb_width/2.0f, target_pos.y - gizmo_aabb_width/2.0f, target_pos.z+gizmo_widget_gap}, {target_pos.x + gizmo_aabb_width/2.0f, target_pos.y + gizmo_aabb_width/2.0f, target_pos.z+gizmo_widget_gap + gizmo_aabb_length}};
-                                gcollision2::AABB gizmo_z_negative_aabb = {{target_pos.x - gizmo_aabb_width/2.0f, target_pos.y - gizmo_aabb_width/2.0f, target_pos.z-gizmo_widget_gap - gizmo_aabb_length}, {target_pos.x + gizmo_aabb_width/2.0f, target_pos.y + gizmo_aabb_width/2.0f, target_pos.z-gizmo_widget_gap}};
-                                // TEMP; TEST:
-                                DrawAABB(&gizmo_x_positive_aabb, 0xFF0000FF);
-                                DrawAABB(&gizmo_x_negative_aabb, 0x800000FF);
-                                DrawAABB(&gizmo_y_positive_aabb, 0x00FF00FF);
-                                DrawAABB(&gizmo_y_negative_aabb, 0x008000FF);
-                                DrawAABB(&gizmo_z_positive_aabb, 0x0000FFFF);
-                                DrawAABB(&gizmo_z_negative_aabb, 0x000080FF);
-
-                                // if (!select_gizmo) active_gizmo_widget = ActiveGizmoWidget::NONE;
-                                // if (select_gizmo && (last_gizmo_select_state == false) && !selected_map_object_just_changed) {
-                                //         float closest_hit_gizmo_widget_distance = FLT_MAX;
-                                //         float distance;
-                                //         const float3 ray_origin = {gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]};
-                                //         const float3 ray_dir = GMisc3DMath::ScreenToWorldRay(gw.mouse_x, gw.mouse_y, gw.window_width, gw.window_height, (float4x4*)gr3d.ViewProjection());
-                                //         if (gcollision2::IntersectRayAABB(ray_origin, ray_dir,
-                                //                 gizmo_x_aabb, &distance
-                                //         )) if (distance < closest_hit_gizmo_widget_distance) { closest_hit_gizmo_widget_distance = distance;
-                                //                 active_gizmo_widget = ActiveGizmoWidget::X;
-                                //         }
-                                //         if (gcollision2::IntersectRayAABB(ray_origin, ray_dir,
-                                //                 gizmo_y_aabb, &distance
-                                //         )) if (distance < closest_hit_gizmo_widget_distance) { closest_hit_gizmo_widget_distance = distance;
-                                //                 active_gizmo_widget = ActiveGizmoWidget::Y;
-                                //         }
-                                //         if (gcollision2::IntersectRayAABB(ray_origin, ray_dir,
-                                //                 gizmo_z_aabb, &distance
-                                //         )) if (distance < closest_hit_gizmo_widget_distance) { closest_hit_gizmo_widget_distance = distance;
-                                //                 active_gizmo_widget = ActiveGizmoWidget::Z;
-                                //         }
-                                //         if (closest_hit_gizmo_widget_distance == FLT_MAX) active_gizmo_widget = ActiveGizmoWidget::NONE;
-                                // }
-                                // switch (active_gizmo_widget) { case NONE: { DrawAABB(&gizmo_x_aabb, 0xFF0000FF); DrawAABB(&gizmo_y_aabb, 0x00FF00FF); DrawAABB(&gizmo_z_aabb, 0x0000FFFF); } break;
-                                //         case X: { DrawAABB(&gizmo_x_aabb, 0xFF0000FF);
-                                //                 // TODO
-                                //         } break;
-                                //         case Y: { DrawAABB(&gizmo_y_aabb, 0x00FF00FF);
-                                //                 // TODO
-                                //         } break;
-                                //         case Z: { DrawAABB(&gizmo_z_aabb, 0x0000FFFF);
-                                //                 // TODO
-                                //         } break;
-                                // }
+                                const float gizmo_widget_scale = linalg::length(target_pos - camera_pos);
+                                const float gizmo_widget_length = GIZMO_WIDGET_LENGTH * gizmo_widget_scale;
+                                const float gizmo_widget_width = GIZMO_WIDGET_WIDTH * gizmo_widget_scale;
+                                gcollision2::AABB gizmo_widget_aabbs[GIZMO_WIDGET_COUNT] = {
+                                        {{target_pos.x, target_pos.y - gizmo_widget_width/2.0f, target_pos.z - gizmo_widget_width/2.0f}, {target_pos.x + gizmo_widget_length/2.0f, target_pos.y + gizmo_widget_width/2.0f, target_pos.z + gizmo_widget_width/2.0f}}, // +x
+                                        {{target_pos.x - gizmo_widget_length/2.0f, target_pos.y - gizmo_widget_width/2.0f, target_pos.z - gizmo_widget_width/2.0f}, {target_pos.x, target_pos.y + gizmo_widget_width/2.0f, target_pos.z + gizmo_widget_width/2.0f}}, // -x
+                                        {{target_pos.x - gizmo_widget_width/2.0f, target_pos.y, target_pos.z - gizmo_widget_width/2.0f}, {target_pos.x + gizmo_widget_width/2.0f, target_pos.y + gizmo_widget_length/2.0f, target_pos.z + gizmo_widget_width/2.0f}}, // +y
+                                        {{target_pos.x - gizmo_widget_width/2.0f, target_pos.y - gizmo_widget_length/2.0f, target_pos.z - gizmo_widget_width/2.0f}, {target_pos.x + gizmo_widget_width/2.0f, target_pos.y, target_pos.z + gizmo_widget_width/2.0f}}, // -y
+                                        {{target_pos.x - gizmo_widget_width/2.0f, target_pos.y - gizmo_widget_width/2.0f, target_pos.z}, {target_pos.x + gizmo_widget_width/2.0f, target_pos.y + gizmo_widget_width/2.0f, target_pos.z + gizmo_widget_length/2.0f}}, // +z
+                                        {{target_pos.x - gizmo_widget_width/2.0f, target_pos.y - gizmo_widget_width/2.0f, target_pos.z - gizmo_widget_length/2.0f}, {target_pos.x + gizmo_widget_width/2.0f, target_pos.y + gizmo_widget_width/2.0f, target_pos.z}}  // -z
+                                };
+                                if (!select_gizmo) active_gizmo_widget = ActiveGizmoWidget::NONE;
+                                if (select_gizmo && (last_select_gizmo_state == false) && !selected_map_object_just_changed) {
+                                        float closest_hit_gizmo_widget_distance = FLT_MAX;
+                                        float distance;
+                                        const float3 ray_origin = camera_pos;
+                                        const float3 ray_dir = GMisc3DMath::ScreenToWorldRay(gw.mouse_x, gw.mouse_y, gw.window_width, gw.window_height, (float4x4*)gr3d.ViewProjection());
+                                        for (size_t i = 0; i < GIZMO_WIDGET_COUNT; i++) {
+                                                if (gcollision2::IntersectRayAABB(ray_origin, ray_dir,
+                                                        gizmo_widget_aabbs[i], &distance
+                                                )) if (distance < closest_hit_gizmo_widget_distance) { closest_hit_gizmo_widget_distance = distance;
+                                                        active_gizmo_widget = (ActiveGizmoWidget)i;
+                                                }
+                                        } if (closest_hit_gizmo_widget_distance == FLT_MAX) active_gizmo_widget = ActiveGizmoWidget::NONE;
+                                }
+                                static int previous_mouse_x = gw.window_width, previous_mouse_y = gw.window_height;
+                                const int mouse_x_delta = gw.mouse_x - previous_mouse_x;
+                                const int mouse_y_delta = gw.mouse_y - previous_mouse_y;
+                                switch (active_gizmo_widget) { case NONE: default: { for (size_t i = 0; i < GIZMO_WIDGET_COUNT; i++) DrawAABB(&gizmo_widget_aabbs[i], GIZMO_WIDGET_COLORS[i]); } break;
+                                        case X_POS: { DrawAABB(&gizmo_widget_aabbs[X_POS], GIZMO_WIDGET_COLORS[X_POS]);
+                                                if (gw.key_states[GWindower::KEY_LEFT_SHIFT] && GetSelectedMapObject()->base_registration->data.rotation) {
+                                                        (float4)GetSelectedMapObject()->mesh_instance->rotation = linalg::qmul(
+                                                                linalg::rotation_quat(float3{1, 0, 0}, mouse_x_delta * (ROTATION_SNAP * (float)M_PI/180) * GIZMO_SNAP_FRACTION * camera_move_speed),
+                                                                (float4)GetSelectedMapObject()->mesh_instance->rotation
+                                                        );
+                                                }
+                                                else if (gw.key_states[GWindower::KEY_LEFT_ALT] && GetSelectedMapObject()->base_registration->data.scale) {
+                                                        // TODO
+                                                }
+                                                else if (GetSelectedMapObject()->base_registration->data.position) {
+                                                        GetSelectedMapObject()->mesh_instance->position[0] += mouse_x_delta * POSITION_SNAP * GIZMO_SNAP_FRACTION * camera_move_speed;
+                                                }
+                                        } break;
+                                        case X_NEG: { DrawAABB(&gizmo_widget_aabbs[X_NEG], GIZMO_WIDGET_COLORS[X_NEG]);
+                                                if (gw.key_states[GWindower::KEY_LEFT_SHIFT] && GetSelectedMapObject()->base_registration->data.rotation) {
+                                                        // TODO
+                                                }
+                                                else if (gw.key_states[GWindower::KEY_LEFT_ALT] && GetSelectedMapObject()->base_registration->data.scale) {
+                                                        // TODO
+                                                }
+                                                else if (GetSelectedMapObject()->base_registration->data.position) {
+                                                        // TODO
+                                                }
+                                        } break;
+                                        case Y_POS: { DrawAABB(&gizmo_widget_aabbs[Y_POS], GIZMO_WIDGET_COLORS[Y_POS]);
+                                                if (gw.key_states[GWindower::KEY_LEFT_SHIFT] && GetSelectedMapObject()->base_registration->data.rotation) {
+                                                        // TODO
+                                                }
+                                                else if (gw.key_states[GWindower::KEY_LEFT_ALT] && GetSelectedMapObject()->base_registration->data.scale) {
+                                                        // TODO
+                                                }
+                                                else if (GetSelectedMapObject()->base_registration->data.position) {
+                                                        // TODO
+                                                }
+                                        } break;
+                                        case Y_NEG: { DrawAABB(&gizmo_widget_aabbs[Y_NEG], GIZMO_WIDGET_COLORS[Y_NEG]);
+                                                if (gw.key_states[GWindower::KEY_LEFT_SHIFT] && GetSelectedMapObject()->base_registration->data.rotation) {
+                                                        // TODO
+                                                }
+                                                else if (gw.key_states[GWindower::KEY_LEFT_ALT] && GetSelectedMapObject()->base_registration->data.scale) {
+                                                        // TODO
+                                                }
+                                                else if (GetSelectedMapObject()->base_registration->data.position) {
+                                                        // TODO
+                                                }
+                                        } break;
+                                        case Z_POS: { DrawAABB(&gizmo_widget_aabbs[Z_POS], GIZMO_WIDGET_COLORS[Z_POS]);
+                                                if (gw.key_states[GWindower::KEY_LEFT_SHIFT] && GetSelectedMapObject()->base_registration->data.rotation) {
+                                                        // TODO
+                                                }
+                                                else if (gw.key_states[GWindower::KEY_LEFT_ALT] && GetSelectedMapObject()->base_registration->data.scale) {
+                                                        // TODO
+                                                }
+                                                else if (GetSelectedMapObject()->base_registration->data.position) {
+                                                        // TODO
+                                                }
+                                        } break;
+                                        case Z_NEG: { DrawAABB(&gizmo_widget_aabbs[Z_NEG], GIZMO_WIDGET_COLORS[Z_NEG]);
+                                                if (gw.key_states[GWindower::KEY_LEFT_SHIFT] && GetSelectedMapObject()->base_registration->data.rotation) {
+                                                        // TODO
+                                                }
+                                                else if (gw.key_states[GWindower::KEY_LEFT_ALT] && GetSelectedMapObject()->base_registration->data.scale) {
+                                                        // TODO
+                                                }
+                                                else if (GetSelectedMapObject()->base_registration->data.position) {
+                                                        // TODO
+                                                }
+                                        } break;
+                                }
+                                previous_mouse_x = gw.mouse_x; previous_mouse_y = gw.mouse_y;
                         }
                 }
 
