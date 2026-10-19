@@ -440,13 +440,15 @@ int main(int argc, char* argv[]) { try {
                                 switch (active_gizmo_widget) { case NONE: default: { for (size_t i = 0; i < GIZMO_WIDGET_COUNT; i++) DrawAABB(&gizmo_widget_aabbs[i], GIZMO_WIDGET_COLORS[i]); } break;
                                         case X_POS: { DrawAABB(&gizmo_widget_aabbs[X_POS], GIZMO_WIDGET_COLORS[X_POS]);
                                                 if (gw.key_states[GWindower::KEY_LEFT_SHIFT] && GetSelectedMapObject()->base_registration->data.rotation) {
-                                                        (float4)GetSelectedMapObject()->mesh_instance->rotation = linalg::qmul(
+                                                        *(float4*)GetSelectedMapObject()->mesh_instance->rotation = linalg::qmul(
                                                                 linalg::rotation_quat(float3{1, 0, 0}, mouse_x_delta * (ROTATION_SNAP * (float)M_PI/180) * GIZMO_SNAP_FRACTION * camera_move_speed),
-                                                                (float4)GetSelectedMapObject()->mesh_instance->rotation
+                                                                *(float4*)GetSelectedMapObject()->mesh_instance->rotation
                                                         );
                                                 }
                                                 else if (gw.key_states[GWindower::KEY_LEFT_ALT] && GetSelectedMapObject()->base_registration->data.scale) {
-                                                        // TODO
+                                                        const float delta = mouse_x_delta * SCALE_SNAP * GIZMO_SNAP_FRACTION * camera_move_speed;
+                                                        GetSelectedMapObject()->mesh_instance->scale[0] += delta;
+                                                        GetSelectedMapObject()->mesh_instance->position[0] += delta/2.0f;
                                                 }
                                                 else if (GetSelectedMapObject()->base_registration->data.position) {
                                                         GetSelectedMapObject()->mesh_instance->position[0] += mouse_x_delta * POSITION_SNAP * GIZMO_SNAP_FRACTION * camera_move_speed;
@@ -454,57 +456,82 @@ int main(int argc, char* argv[]) { try {
                                         } break;
                                         case X_NEG: { DrawAABB(&gizmo_widget_aabbs[X_NEG], GIZMO_WIDGET_COLORS[X_NEG]);
                                                 if (gw.key_states[GWindower::KEY_LEFT_SHIFT] && GetSelectedMapObject()->base_registration->data.rotation) {
-                                                        // TODO
+                                                        *(float4*)GetSelectedMapObject()->mesh_instance->rotation = linalg::qmul(
+                                                                linalg::rotation_quat(float3{-1, 0, 0}, mouse_x_delta * (ROTATION_SNAP * (float)M_PI/180) * GIZMO_SNAP_FRACTION * camera_move_speed),
+                                                                *(float4*)GetSelectedMapObject()->mesh_instance->rotation
+                                                        );
                                                 }
                                                 else if (gw.key_states[GWindower::KEY_LEFT_ALT] && GetSelectedMapObject()->base_registration->data.scale) {
-                                                        // TODO
+                                                        const float delta = mouse_x_delta * SCALE_SNAP * GIZMO_SNAP_FRACTION * camera_move_speed;
+                                                        GetSelectedMapObject()->mesh_instance->scale[0] += delta;
+                                                        GetSelectedMapObject()->mesh_instance->position[0] -= delta/2.0f;
                                                 }
                                                 else if (GetSelectedMapObject()->base_registration->data.position) {
-                                                        // TODO
+                                                        GetSelectedMapObject()->mesh_instance->position[0] -= mouse_x_delta * POSITION_SNAP * GIZMO_SNAP_FRACTION * camera_move_speed;
                                                 }
                                         } break;
                                         case Y_POS: { DrawAABB(&gizmo_widget_aabbs[Y_POS], GIZMO_WIDGET_COLORS[Y_POS]);
                                                 if (gw.key_states[GWindower::KEY_LEFT_SHIFT] && GetSelectedMapObject()->base_registration->data.rotation) {
-                                                        // TODO
+                                                        *(float4*)GetSelectedMapObject()->mesh_instance->rotation = linalg::qmul(
+                                                                linalg::rotation_quat(float3{0, 1, 0}, mouse_x_delta * (ROTATION_SNAP * (float)M_PI/180) * GIZMO_SNAP_FRACTION * camera_move_speed),
+                                                                *(float4*)GetSelectedMapObject()->mesh_instance->rotation
+                                                        );
                                                 }
                                                 else if (gw.key_states[GWindower::KEY_LEFT_ALT] && GetSelectedMapObject()->base_registration->data.scale) {
-                                                        // TODO
+                                                        const float delta = mouse_x_delta * SCALE_SNAP * GIZMO_SNAP_FRACTION * camera_move_speed;
+                                                        GetSelectedMapObject()->mesh_instance->scale[1] += delta;
+                                                        GetSelectedMapObject()->mesh_instance->position[1] += delta/2.0f;
                                                 }
                                                 else if (GetSelectedMapObject()->base_registration->data.position) {
-                                                        // TODO
+                                                        GetSelectedMapObject()->mesh_instance->position[1] += mouse_x_delta * POSITION_SNAP * GIZMO_SNAP_FRACTION * camera_move_speed;
                                                 }
                                         } break;
                                         case Y_NEG: { DrawAABB(&gizmo_widget_aabbs[Y_NEG], GIZMO_WIDGET_COLORS[Y_NEG]);
                                                 if (gw.key_states[GWindower::KEY_LEFT_SHIFT] && GetSelectedMapObject()->base_registration->data.rotation) {
-                                                        // TODO
+                                                        *(float4*)GetSelectedMapObject()->mesh_instance->rotation = linalg::qmul(
+                                                                linalg::rotation_quat(float3{0, -1, 0}, mouse_x_delta * (ROTATION_SNAP * (float)M_PI/180) * GIZMO_SNAP_FRACTION * camera_move_speed),
+                                                                *(float4*)GetSelectedMapObject()->mesh_instance->rotation
+                                                        );
                                                 }
                                                 else if (gw.key_states[GWindower::KEY_LEFT_ALT] && GetSelectedMapObject()->base_registration->data.scale) {
-                                                        // TODO
+                                                        const float delta = mouse_x_delta * SCALE_SNAP * GIZMO_SNAP_FRACTION * camera_move_speed;
+                                                        GetSelectedMapObject()->mesh_instance->scale[1] += delta;
+                                                        GetSelectedMapObject()->mesh_instance->position[1] -= delta/2.0f;
                                                 }
                                                 else if (GetSelectedMapObject()->base_registration->data.position) {
-                                                        // TODO
+                                                        GetSelectedMapObject()->mesh_instance->position[1] -= mouse_x_delta * POSITION_SNAP * GIZMO_SNAP_FRACTION * camera_move_speed;
                                                 }
                                         } break;
                                         case Z_POS: { DrawAABB(&gizmo_widget_aabbs[Z_POS], GIZMO_WIDGET_COLORS[Z_POS]);
                                                 if (gw.key_states[GWindower::KEY_LEFT_SHIFT] && GetSelectedMapObject()->base_registration->data.rotation) {
-                                                        // TODO
+                                                        *(float4*)GetSelectedMapObject()->mesh_instance->rotation = linalg::qmul(
+                                                                linalg::rotation_quat(float3{0, 0, 1}, mouse_x_delta * (ROTATION_SNAP * (float)M_PI/180) * GIZMO_SNAP_FRACTION * camera_move_speed),
+                                                                *(float4*)GetSelectedMapObject()->mesh_instance->rotation
+                                                        );
                                                 }
                                                 else if (gw.key_states[GWindower::KEY_LEFT_ALT] && GetSelectedMapObject()->base_registration->data.scale) {
-                                                        // TODO
+                                                        const float delta = mouse_x_delta * SCALE_SNAP * GIZMO_SNAP_FRACTION * camera_move_speed;
+                                                        GetSelectedMapObject()->mesh_instance->scale[2] += delta;
+                                                        GetSelectedMapObject()->mesh_instance->position[2] += delta/2.0f;
                                                 }
                                                 else if (GetSelectedMapObject()->base_registration->data.position) {
-                                                        // TODO
+                                                        GetSelectedMapObject()->mesh_instance->position[2] += mouse_x_delta * POSITION_SNAP * GIZMO_SNAP_FRACTION * camera_move_speed;
                                                 }
                                         } break;
                                         case Z_NEG: { DrawAABB(&gizmo_widget_aabbs[Z_NEG], GIZMO_WIDGET_COLORS[Z_NEG]);
                                                 if (gw.key_states[GWindower::KEY_LEFT_SHIFT] && GetSelectedMapObject()->base_registration->data.rotation) {
-                                                        // TODO
+                                                        *(float4*)GetSelectedMapObject()->mesh_instance->rotation = linalg::qmul(
+                                                                linalg::rotation_quat(float3{0, 0, -1}, mouse_x_delta * (ROTATION_SNAP * (float)M_PI/180) * GIZMO_SNAP_FRACTION * camera_move_speed),
+                                                                *(float4*)GetSelectedMapObject()->mesh_instance->rotation
+                                                        );
                                                 }
                                                 else if (gw.key_states[GWindower::KEY_LEFT_ALT] && GetSelectedMapObject()->base_registration->data.scale) {
-                                                        // TODO
+                                                        const float delta = mouse_x_delta * SCALE_SNAP * GIZMO_SNAP_FRACTION * camera_move_speed;
+                                                        GetSelectedMapObject()->mesh_instance->scale[2] += delta;
+                                                        GetSelectedMapObject()->mesh_instance->position[2] -= delta/2.0f;
                                                 }
                                                 else if (GetSelectedMapObject()->base_registration->data.position) {
-                                                        // TODO
+                                                        GetSelectedMapObject()->mesh_instance->position[2] -= mouse_x_delta * POSITION_SNAP * GIZMO_SNAP_FRACTION * camera_move_speed;
                                                 }
                                         } break;
                                 }
