@@ -11,7 +11,7 @@ Run `GMap` and pipe a MapObject registry (JSON array of JSON objects) into its s
 
 On `Save & Quit`: JSON of current map/scene is outputted to stdout (you can compose this with other programs/scripts (or just pipe to file: `> MAP_NAME.json`))
 
-You can pass path to map/scene JSON file as first CLI arg to `GMap` to load it (ex.: `cat GMapObjectRegistry.json | GMap.exe MAP_NAME.json`)
+You can pass path to map/scene JSON file as first CLI arg to `GMap` to load it (ex.: `cat GMapObjectRegistry.json | ./GMap.exe MAP_NAME.json`)
 
 
 # MapObject registry format
