@@ -700,120 +700,126 @@ int main(int argc, char* argv[]) { try {
                 if (show_quit_dialog) show_ui = true;
 
                 if (show_ui) { if (GetSelectedMapObject() != nullptr) { const gcollision2::AABB aabb = GetSelectedMapObject()->WorldAABB(); DrawAABB(&aabb); }
-                        ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame(); ImGui::NewFrame(); { if (controlling_camera || (gw.input_states[GWindower::MOUSEBUTTON_LEFT] && !ImGui::GetIO().WantCaptureMouse)) ImGui::SetWindowFocus(); /* (unfocus GUI if controlling camera or clicked off) */ ImGui::SetNextWindowPos({0.0f, (float)gw.window_height}, ImGuiCond_Always, {0.0f, 1.0f}); ImGui::Begin("USAGE", NULL, (ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); { ImGui::TextUnformatted(USAGE_TEXT, USAGE_TEXT+sizeof(USAGE_TEXT)); } ImGui::End();
-                                ImGui::SetNextWindowPos({(float)gw.window_width, 0.0f}, ImGuiCond_Always, {1.0f, 0.0f}); ImGui::SetNextWindowSizeConstraints({0.0f, 0.0f}, {gw.window_width/3.0f, FLT_MAX});
-                                ImGui::Begin("ADD", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
-                                        for (const std::string& name : map_object_names) {
-                                                if (ImGui::Button(name.c_str())) SetSelectedMapObject(MapObjectInstance::Create(name, gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]));
+                        ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame(); ImGui::NewFrame(); if (controlling_camera || (gw.input_states[GWindower::MOUSEBUTTON_LEFT] && !ImGui::GetIO().WantCaptureMouse)) ImGui::SetWindowFocus(); /* (unfocus GUI if controlling camera or clicked off) */ ImGui::SetNextWindowPos({0.0f, (float)gw.window_height}, ImGuiCond_Always, {0.0f, 1.0f}); ImGui::Begin("USAGE", NULL, (ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); { ImGui::TextUnformatted(USAGE_TEXT, USAGE_TEXT+sizeof(USAGE_TEXT)); } ImGui::End();
+
+                        ImGui::SetNextWindowPos({(float)gw.window_width, 0.0f}, ImGuiCond_Always, {1.0f, 0.0f}); ImGui::SetNextWindowSizeConstraints({0.0f, 0.0f}, {gw.window_width/3.0f, FLT_MAX});
+                        ImGui::Begin("ADD", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
+                                for (const std::string& name : map_object_names) {
+                                        if (ImGui::Button(name.c_str())) SetSelectedMapObject(MapObjectInstance::Create(name, gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]));
+                                }
+                        } ImGui::End();
+
+                        if (GetSelectedMapObject() != nullptr && !selected_map_object_just_changed) {
+                                ImGui::SetNextWindowPos({0.0f, 0.0f}, ImGuiCond_Always, {0.0f, 0.0f}); ImGui::SetNextWindowSizeConstraints({0.0f, 0.0f}, {gw.window_width/3.0f, FLT_MAX});
+                                ImGui::Begin("INSPECTOR", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
+                                        if (GetSelectedMapObject()->base_registration->data.user_model) {
+                                                static const char button_label[] = "Model";
+                                                if (ImGui::Button(button_label)) GetSelectedMapObject()->SetUserModelAndOrTexture(ShowAndGetPathFromOpenDialog("obj"));
+                                                std::string path_label_text = GetSelectedMapObject()->GetUserModel();
+                                                if (path_label_text.size() > 32-sizeof(button_label)) path_label_text = "..." + path_label_text.substr(path_label_text.size() - (32-sizeof(button_label)));
+                                                ImGui::SameLine();
+                                                ImGui::TextUnformatted(path_label_text.c_str(), path_label_text.c_str()+path_label_text.size());
+                                        }
+                                        if (GetSelectedMapObject()->base_registration->data.user_texture) {
+                                                static const char button_label[] = "Texture";
+                                                if (ImGui::Button(button_label)) GetSelectedMapObject()->SetUserModelAndOrTexture("", ShowAndGetPathFromOpenDialog("png"));
+                                                std::string path_label_text = GetSelectedMapObject()->GetUserTexture();
+                                                if (path_label_text.size() > 32-sizeof(button_label)) path_label_text = "..." + path_label_text.substr(path_label_text.size() - (32-sizeof(button_label)));
+                                                ImGui::SameLine();
+                                                ImGui::TextUnformatted(path_label_text.c_str(), path_label_text.c_str()+path_label_text.size());
+                                        }
+                                        if (GetSelectedMapObject()->base_registration->data.position) {
+                                                float previous_position[3] = {GetSelectedMapObject()->mesh_instance->position[0], GetSelectedMapObject()->mesh_instance->position[1], GetSelectedMapObject()->mesh_instance->position[2]};
+                                                if (ImGui::DragFloat3("POSITION", GetSelectedMapObject()->mesh_instance->position, POSITION_SNAP, 0.0f, 0.0f, "%.3f", ImGuiSliderFlags_NoSpeedTweaks)) {
+                                                        if (GetSelectedMapObject()->mesh_instance->position[0] != previous_position[0]) GetSelectedMapObject()->mesh_instance->position[0] = std::round(GetSelectedMapObject()->mesh_instance->position[0] / POSITION_SNAP) * POSITION_SNAP;
+                                                        if (GetSelectedMapObject()->mesh_instance->position[1] != previous_position[1]) GetSelectedMapObject()->mesh_instance->position[1] = std::round(GetSelectedMapObject()->mesh_instance->position[1] / POSITION_SNAP) * POSITION_SNAP;
+                                                        if (GetSelectedMapObject()->mesh_instance->position[2] != previous_position[2]) GetSelectedMapObject()->mesh_instance->position[2] = std::round(GetSelectedMapObject()->mesh_instance->position[2] / POSITION_SNAP) * POSITION_SNAP;
+                                                }
+                                        }
+                                        if (GetSelectedMapObject()->base_registration->data.rotation) {
+                                                float3 euler = GetSelectedMapObject()->GetEuler();
+                                                float3 previous_euler = euler;
+                                                if (ImGui::DragFloat3("ROTATION", (float*)&euler, ROTATION_SNAP, 0.0f, 0.0f, "%.3f", ImGuiSliderFlags_NoSpeedTweaks)) {
+                                                        if (euler.x != previous_euler.x) euler.x = std::round(euler.x / ROTATION_SNAP) * ROTATION_SNAP;
+                                                        if (euler.y != previous_euler.y) euler.y = std::round(euler.y / ROTATION_SNAP) * ROTATION_SNAP;
+                                                        if (euler.z != previous_euler.z) euler.z = std::round(euler.z / ROTATION_SNAP) * ROTATION_SNAP;
+                                                        GetSelectedMapObject()->SetEuler(euler);
+                                                }
+                                        }
+                                        if (GetSelectedMapObject()->base_registration->data.scale) {
+                                                float previous_scale[3] = {GetSelectedMapObject()->mesh_instance->scale[0], GetSelectedMapObject()->mesh_instance->scale[1], GetSelectedMapObject()->mesh_instance->scale[2]};
+                                                if (ImGui::DragFloat3("SCALE", GetSelectedMapObject()->mesh_instance->scale, SCALE_SNAP, 0.0f, 0.0f, "%.3f", ImGuiSliderFlags_NoSpeedTweaks)) {
+                                                        if (GetSelectedMapObject()->mesh_instance->scale[0] != previous_scale[0]) GetSelectedMapObject()->mesh_instance->scale[0] = std::round(GetSelectedMapObject()->mesh_instance->scale[0] / SCALE_SNAP) * SCALE_SNAP;
+                                                        if (GetSelectedMapObject()->mesh_instance->scale[1] != previous_scale[1]) GetSelectedMapObject()->mesh_instance->scale[1] = std::round(GetSelectedMapObject()->mesh_instance->scale[1] / SCALE_SNAP) * SCALE_SNAP;
+                                                        if (GetSelectedMapObject()->mesh_instance->scale[2] != previous_scale[2]) GetSelectedMapObject()->mesh_instance->scale[2] = std::round(GetSelectedMapObject()->mesh_instance->scale[2] / SCALE_SNAP) * SCALE_SNAP;
+                                                }
+                                        }
+                                        if (GetSelectedMapObject()->base_registration->data.color) {
+                                                ImVec4 color = ImGui::ColorConvertU32ToFloat4(GetSelectedMapObject()->mesh_instance->color_RGBA);
+                                                float _temp;
+                                                _temp = color.x; color.x = color.w; color.w = _temp;
+                                                _temp = color.y; color.y = color.z; color.z = _temp;
+                                                ImGui::ColorPicker4("COLOR", (float*)&color);
+                                                _temp = color.x; color.x = color.w; color.w = _temp;
+                                                _temp = color.y; color.y = color.z; color.z = _temp;
+                                                GetSelectedMapObject()->mesh_instance->color_RGBA = ImGui::ColorConvertFloat4ToU32(color);
+                                        }
+                                        if (GetSelectedMapObject()->extra_data.size() > 0) { ImGui::NewLine();
+                                                uint64_t _uid = 0;
+                                                for (auto& [label, val] : GetSelectedMapObject()->extra_data.items()) { ImGui::PushID(_uid); switch (val.type()) { default: break;
+                                                        case (nlohmann::json::value_t::boolean): { bool _val = val;
+                                                                ImGui::Checkbox(label.c_str(), &_val); val = _val;
+                                                        } break;
+                                                        case (nlohmann::json::value_t::number_integer): { int64_t _val = val;
+                                                                ImGui::InputScalar(label.c_str(), ImGuiDataType_S64, &_val); val = _val;
+                                                        } break;
+                                                        case (nlohmann::json::value_t::number_unsigned): { uint64_t _val = val;
+                                                                ImGui::InputScalar(label.c_str(), ImGuiDataType_U64, &_val); val = _val;
+                                                        } break;
+                                                        case (nlohmann::json::value_t::number_float): { float _val = val;
+                                                                ImGui::InputFloat(label.c_str(), &_val, 0, 0, "%f"); val = _val;
+                                                        } break;
+                                                        case (nlohmann::json::value_t::string): { std::string _val = val;
+                                                                ImGui::InputText(label.c_str(), &_val); val = _val;
+                                                        } break;
+                                                } ImGui::PopID(); _uid++; }
                                         }
                                 } ImGui::End();
+                        }
 
-                                if (GetSelectedMapObject() != nullptr && !selected_map_object_just_changed) {
-                                        ImGui::SetNextWindowPos({0.0f, 0.0f}, ImGuiCond_Always, {0.0f, 0.0f}); ImGui::SetNextWindowSizeConstraints({0.0f, 0.0f}, {gw.window_width/3.0f, FLT_MAX});
-                                        ImGui::Begin("INSPECTOR", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
-                                                if (GetSelectedMapObject()->base_registration->data.user_model) {
-                                                        static const char button_label[] = "Model";
-                                                        if (ImGui::Button(button_label)) GetSelectedMapObject()->SetUserModelAndOrTexture(ShowAndGetPathFromOpenDialog("obj"));
-                                                        std::string path_label_text = GetSelectedMapObject()->GetUserModel();
-                                                        if (path_label_text.size() > 32-sizeof(button_label)) path_label_text = "..." + path_label_text.substr(path_label_text.size() - (32-sizeof(button_label)));
-                                                        ImGui::SameLine();
-                                                        ImGui::TextUnformatted(path_label_text.c_str(), path_label_text.c_str()+path_label_text.size());
-                                                }
-                                                if (GetSelectedMapObject()->base_registration->data.user_texture) {
-                                                        static const char button_label[] = "Texture";
-                                                        if (ImGui::Button(button_label)) GetSelectedMapObject()->SetUserModelAndOrTexture("", ShowAndGetPathFromOpenDialog("png"));
-                                                        std::string path_label_text = GetSelectedMapObject()->GetUserTexture();
-                                                        if (path_label_text.size() > 32-sizeof(button_label)) path_label_text = "..." + path_label_text.substr(path_label_text.size() - (32-sizeof(button_label)));
-                                                        ImGui::SameLine();
-                                                        ImGui::TextUnformatted(path_label_text.c_str(), path_label_text.c_str()+path_label_text.size());
-                                                }
-                                                if (GetSelectedMapObject()->base_registration->data.position) {
-                                                        float previous_position[3] = {GetSelectedMapObject()->mesh_instance->position[0], GetSelectedMapObject()->mesh_instance->position[1], GetSelectedMapObject()->mesh_instance->position[2]};
-                                                        if (ImGui::DragFloat3("POSITION", GetSelectedMapObject()->mesh_instance->position, POSITION_SNAP, 0.0f, 0.0f, "%.3f", ImGuiSliderFlags_NoSpeedTweaks)) {
-                                                                if (GetSelectedMapObject()->mesh_instance->position[0] != previous_position[0]) GetSelectedMapObject()->mesh_instance->position[0] = std::round(GetSelectedMapObject()->mesh_instance->position[0] / POSITION_SNAP) * POSITION_SNAP;
-                                                                if (GetSelectedMapObject()->mesh_instance->position[1] != previous_position[1]) GetSelectedMapObject()->mesh_instance->position[1] = std::round(GetSelectedMapObject()->mesh_instance->position[1] / POSITION_SNAP) * POSITION_SNAP;
-                                                                if (GetSelectedMapObject()->mesh_instance->position[2] != previous_position[2]) GetSelectedMapObject()->mesh_instance->position[2] = std::round(GetSelectedMapObject()->mesh_instance->position[2] / POSITION_SNAP) * POSITION_SNAP;
-                                                        }
-                                                }
-                                                if (GetSelectedMapObject()->base_registration->data.rotation) {
-                                                        float3 euler = GetSelectedMapObject()->GetEuler();
-                                                        float3 previous_euler = euler;
-                                                        if (ImGui::DragFloat3("ROTATION", (float*)&euler, ROTATION_SNAP, 0.0f, 0.0f, "%.3f", ImGuiSliderFlags_NoSpeedTweaks)) {
-                                                                if (euler.x != previous_euler.x) euler.x = std::round(euler.x / ROTATION_SNAP) * ROTATION_SNAP;
-                                                                if (euler.y != previous_euler.y) euler.y = std::round(euler.y / ROTATION_SNAP) * ROTATION_SNAP;
-                                                                if (euler.z != previous_euler.z) euler.z = std::round(euler.z / ROTATION_SNAP) * ROTATION_SNAP;
-                                                                GetSelectedMapObject()->SetEuler(euler);
-                                                        }
-                                                }
-                                                if (GetSelectedMapObject()->base_registration->data.scale) {
-                                                        float previous_scale[3] = {GetSelectedMapObject()->mesh_instance->scale[0], GetSelectedMapObject()->mesh_instance->scale[1], GetSelectedMapObject()->mesh_instance->scale[2]};
-                                                        if (ImGui::DragFloat3("SCALE", GetSelectedMapObject()->mesh_instance->scale, SCALE_SNAP, 0.0f, 0.0f, "%.3f", ImGuiSliderFlags_NoSpeedTweaks)) {
-                                                                if (GetSelectedMapObject()->mesh_instance->scale[0] != previous_scale[0]) GetSelectedMapObject()->mesh_instance->scale[0] = std::round(GetSelectedMapObject()->mesh_instance->scale[0] / SCALE_SNAP) * SCALE_SNAP;
-                                                                if (GetSelectedMapObject()->mesh_instance->scale[1] != previous_scale[1]) GetSelectedMapObject()->mesh_instance->scale[1] = std::round(GetSelectedMapObject()->mesh_instance->scale[1] / SCALE_SNAP) * SCALE_SNAP;
-                                                                if (GetSelectedMapObject()->mesh_instance->scale[2] != previous_scale[2]) GetSelectedMapObject()->mesh_instance->scale[2] = std::round(GetSelectedMapObject()->mesh_instance->scale[2] / SCALE_SNAP) * SCALE_SNAP;
-                                                        }
-                                                }
-                                                if (GetSelectedMapObject()->base_registration->data.color) {
-                                                        ImVec4 color = ImGui::ColorConvertU32ToFloat4(GetSelectedMapObject()->mesh_instance->color_RGBA);
-                                                        float _temp;
-                                                        _temp = color.x; color.x = color.w; color.w = _temp;
-                                                        _temp = color.y; color.y = color.z; color.z = _temp;
-                                                        ImGui::ColorPicker4("COLOR", (float*)&color);
-                                                        _temp = color.x; color.x = color.w; color.w = _temp;
-                                                        _temp = color.y; color.y = color.z; color.z = _temp;
-                                                        GetSelectedMapObject()->mesh_instance->color_RGBA = ImGui::ColorConvertFloat4ToU32(color);
-                                                }
-                                                if (GetSelectedMapObject()->extra_data.size() > 0) { ImGui::NewLine();
-                                                        uint64_t _uid = 0;
-                                                        for (auto& [label, val] : GetSelectedMapObject()->extra_data.items()) { ImGui::PushID(_uid); switch (val.type()) { default: break;
-                                                                case (nlohmann::json::value_t::boolean): { bool _val = val;
-                                                                        ImGui::Checkbox(label.c_str(), &_val); val = _val;
-                                                                } break;
-                                                                case (nlohmann::json::value_t::number_integer): { int64_t _val = val;
-                                                                        ImGui::InputScalar(label.c_str(), ImGuiDataType_S64, &_val); val = _val;
-                                                                } break;
-                                                                case (nlohmann::json::value_t::number_unsigned): { uint64_t _val = val;
-                                                                        ImGui::InputScalar(label.c_str(), ImGuiDataType_U64, &_val); val = _val;
-                                                                } break;
-                                                                case (nlohmann::json::value_t::number_float): { float _val = val;
-                                                                        ImGui::InputFloat(label.c_str(), &_val, 0, 0, "%f"); val = _val;
-                                                                } break;
-                                                                case (nlohmann::json::value_t::string): { std::string _val = val;
-                                                                        ImGui::InputText(label.c_str(), &_val); val = _val;
-                                                                } break;
-                                                        } ImGui::PopID(); _uid++; }
-                                                }
-                                        } ImGui::End();
-                                }
+                        ImGui::SetNextWindowPos({(float)gw.window_width/2, (float)gw.window_height}, ImGuiCond_Always, {0.5f, 1.0f}); ImGui::SetNextWindowSizeConstraints({0.0f, 0.0f}, {gw.window_width/3.0f, FLT_MAX});
+                        ImGui::Begin("INFO", NULL, (ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
+                                ImGui::Text("%.3f %.3f %.3f", gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]);
+                        } ImGui::End();
 
-                                if (show_quit_dialog) {
-                                        ImGui::SetNextWindowPos({(float)gw.window_width/2.0f, (float)gw.window_height/2.0f}, ImGuiCond_Always, {0.5f, 0.5f});
-                                        ImGui::Begin("QUIT_DIALOG", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
-                                                if (ImGui::Button("Save & Quit")) {
-                                                        nlohmann::json output = nlohmann::json::array();
-                                                        for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) {
-                                                                output.push_back(map_object_instance->SerializeToJSON());
-                                                        }
-                                                        std::cout << std::setw(4) << output << std::endl;
-                                                        break;
+                        if (show_quit_dialog) {
+                                ImGui::SetNextWindowPos({(float)gw.window_width/2.0f, (float)gw.window_height/2.0f}, ImGuiCond_Always, {0.5f, 0.5f});
+                                ImGui::Begin("QUIT_DIALOG", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
+                                        if (ImGui::Button("Save & Quit")) {
+                                                nlohmann::json output = nlohmann::json::array();
+                                                for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) {
+                                                        output.push_back(map_object_instance->SerializeToJSON());
                                                 }
-                                                if (ImGui::Button("Quit without saving")) break;
-                                                if (ImGui::Button("Cancel")) show_quit_dialog = false;
-                                        } ImGui::End();
-                                }
-                        } ImGui::Render();
+                                                std::cout << std::setw(4) << output << std::endl;
+                                                break;
+                                        }
+                                        if (ImGui::Button("Quit without saving")) break;
+                                        if (ImGui::Button("Cancel")) show_quit_dialog = false;
+                                } ImGui::End();
+                        }
                 }
 
                 selected_map_object_just_changed = false;
 
-                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); glViewport(0, 0, gw.window_width, gw.window_height);  // (leaving this inside of the mainloop in case I want to support windowed operation in the future)
+                glViewport(0, 0, gw.window_width, gw.window_height);
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
                 gr3d.DrawFrame(gw.window_width, gw.window_height);
                 if (show_ui) {
                         glClear(GL_DEPTH_BUFFER_BIT);
                         glr3d.camera_pos[0] = gr3d.camera_pos[0]; glr3d.camera_pos[1] = gr3d.camera_pos[1]; glr3d.camera_pos[2] = gr3d.camera_pos[2]; glr3d.camera_yaw = gr3d.camera_yaw; glr3d.camera_pitch = gr3d.camera_pitch; glr3d.camera_fov = gr3d.camera_fov; glr3d.camera_near = gr3d.camera_near; glr3d.camera_far = gr3d.camera_far;
                         glr3d.DrawFrame(gw.window_width, gw.window_height);
                         glClear(GL_DEPTH_BUFFER_BIT);
-                        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+                        ImGui::Render(); ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
                 }
         }
         ImGui_ImplOpenGL3_Shutdown(); ImGui_ImplGlfw_Shutdown(); ImGui::DestroyContext(); NFD_Quit();
