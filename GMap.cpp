@@ -367,13 +367,11 @@ int main(int argc, char* argv[]) { try {
 
                 static int camera_move_speed = STARTING_CAMERA_MOVE_SPEED;
 
-                if (!ImGui::GetIO().WantCaptureMouse) {
+                if (controlling_camera) {
                         if (gw.mouse_scroll_delta > 0.5 || gw.input_states[GWindower::KEY_UP]) camera_move_speed *= 2;
                         if (gw.mouse_scroll_delta < -0.5 || gw.input_states[GWindower::KEY_DOWN]) camera_move_speed /= 2;
                         if (camera_move_speed < 1) camera_move_speed = 1;
-                }
 
-                if (controlling_camera && !gw.input_states[GWindower::MOUSEBUTTON_LEFT]) {
                         gr3d.camera_yaw += gw.mouse_x_delta * CAMERA_SENSITIVITY;
                         gr3d.camera_pitch += gw.mouse_y_delta * CAMERA_SENSITIVITY;
                         gr3d.camera_pos[1] += (-gw.input_states[GWindower::KEY_LEFT_CONTROL] + gw.input_states[GWindower::KEY_SPACE]) * camera_move_speed * delta_time;
@@ -541,32 +539,6 @@ int main(int argc, char* argv[]) { try {
                         }
 
                         const float camera_yaw_offsetted_45 = (uint16_t)(gr3d.camera_yaw + USHRT_MAX/8); // offsetting by 45-degrees (PI/4) to make it so the axes line up neatly for conditional checks (otherwise -Z (angle 0 (forward)) axis alignment check would be both less than 0 *and* greater than 0) (...might make more sense if you visualize it in your head (starts off as like a pizza sliced into 4 slices making an 'X' shape, then rotated 45-degrees to make the slice seams into a '+' shape))  // (re-casting to ushort to force ushort overflow)
-
-                        if (controlling_camera && gw.input_states[GWindower::MOUSEBUTTON_LEFT]) {  // planar transform
-                                if (gw.input_states[GWindower::KEY_LEFT_SHIFT]) { if (GetSelectedMapObject()->base_registration->data.rotation) {
-                                        const float4 new_rot = linalg::qmul(
-                                                linalg::rotation_quat(float3{0, 1, 0}, gw.mouse_x_delta * -ROTATION_SNAP),  // y
-                                                float4{GetSelectedMapObject()->mesh_instance->rotation[0], GetSelectedMapObject()->mesh_instance->rotation[1], GetSelectedMapObject()->mesh_instance->rotation[2], GetSelectedMapObject()->mesh_instance->rotation[3]}
-                                        );
-                                        GetSelectedMapObject()->mesh_instance->rotation[0] = new_rot.x; GetSelectedMapObject()->mesh_instance->rotation[1] = new_rot.y; GetSelectedMapObject()->mesh_instance->rotation[2] = new_rot.z; GetSelectedMapObject()->mesh_instance->rotation[3] = new_rot.w;
-                                }}
-                                else if (gw.input_states[GWindower::KEY_LEFT_ALT]) { if (GetSelectedMapObject()->base_registration->data.scale) {
-                                        GetSelectedMapObject()->mesh_instance->scale[1] += -gw.mouse_y_delta * SCALE_SNAP;
-                                        const float new_x_or_z = gw.mouse_x_delta * SCALE_SNAP;
-                                        if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) { GetSelectedMapObject()->mesh_instance->scale[0] += new_x_or_z; }
-                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) { GetSelectedMapObject()->mesh_instance->scale[2] += new_x_or_z; }
-                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*2 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*3) { GetSelectedMapObject()->mesh_instance->scale[0] += new_x_or_z; }
-                                        else { GetSelectedMapObject()->mesh_instance->scale[2] += new_x_or_z; }
-                                }} else { if (GetSelectedMapObject()->base_registration->data.position) {
-                                        const float new_y = -gw.mouse_y_delta * POSITION_SNAP;
-                                        GetSelectedMapObject()->mesh_instance->position[1] += new_y; gr3d.camera_pos[1] += new_y;
-                                        const float new_x_or_z = gw.mouse_x_delta * POSITION_SNAP;
-                                        if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) { GetSelectedMapObject()->mesh_instance->position[0] -= new_x_or_z; gr3d.camera_pos[0] -= new_x_or_z; }
-                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) { GetSelectedMapObject()->mesh_instance->position[2] -= new_x_or_z; gr3d.camera_pos[2] -= new_x_or_z; }
-                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*2 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*3) { GetSelectedMapObject()->mesh_instance->position[0] += new_x_or_z; gr3d.camera_pos[0] += new_x_or_z; }
-                                        else { GetSelectedMapObject()->mesh_instance->position[2] += new_x_or_z; gr3d.camera_pos[2] += new_x_or_z; }
-                                }}
-                        }
 
                         if (gw.input_states[GWindower::KEY_UP] && (gw.last_input_states[GWindower::KEY_UP] == false)) {
                                 if (gw.input_states[GWindower::KEY_LEFT_SHIFT]) { if (GetSelectedMapObject()->base_registration->data.rotation) {
