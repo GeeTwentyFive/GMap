@@ -670,11 +670,14 @@ int main(int argc, char* argv[]) { try {
                                 } ImGui::End();
                         }
 
-                        // TODO
-                        ImGui::SetNextWindowPos({(float)gw.window_width/2, (float)gw.window_height}, ImGuiCond_Always, {0.5f, 1.0f}); ImGui::SetNextWindowSizeConstraints({0.0f, 0.0f}, {gw.window_width/3.0f, FLT_MAX});
-                        ImGui::Begin("INFO", NULL, (ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
-                                ImGui::Text("%.3f %.3f %.3f", gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]);
-                        } ImGui::End();
+                        static bool show_extra_info = false;
+                        if (gw.input_states[GWindower::KEY_LEFT_ALT] && gw.input_states[GWindower::KEY_I] && (gw.last_input_states[GWindower::KEY_I] == false)) show_extra_info = !show_extra_info;
+                        if (show_extra_info) {
+                                ImGui::SetNextWindowPos({(float)gw.window_width/2, (float)gw.window_height}, ImGuiCond_Always, {0.5f, 1.0f}); ImGui::SetNextWindowSizeConstraints({0.0f, 0.0f}, {gw.window_width/3.0f, FLT_MAX});
+                                ImGui::Begin("INFO", NULL, (ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
+                                        ImGui::Text("%.3f %.3f %.3f", gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]);
+                                } ImGui::End();
+                        }
 
                         if (show_quit_dialog) {
                                 ImGui::SetNextWindowPos({(float)gw.window_width/2.0f, (float)gw.window_height/2.0f}, ImGuiCond_Always, {0.5f, 0.5f});
