@@ -34,3 +34,6 @@
 [submodule "libs/libGMisc3DMath"]
 	path = libs/libGMisc3DMath
 	url = https://github.com/GeeTwentyFive/libGMisc3DMath.git
+[submodule "libs/libGGizmo3D"]
+	path = libs/libGGizmo3D
+	url = https://github.com/GeeTwentyFive/libGGizmo3D.git
