@@ -368,8 +368,8 @@ int main(int argc, char* argv[]) { try {
                 static int camera_move_speed = STARTING_CAMERA_MOVE_SPEED;
 
                 if (controlling_camera) {
-                        if (gw.mouse_scroll_delta > 0.5 || gw.input_states[GWindower::KEY_UP]) camera_move_speed *= 2;
-                        if (gw.mouse_scroll_delta < -0.5 || gw.input_states[GWindower::KEY_DOWN]) camera_move_speed /= 2;
+                        if (gw.mouse_scroll_delta > 0.5) camera_move_speed *= 2;
+                        if (gw.mouse_scroll_delta < -0.5) camera_move_speed /= 2;
                         if (camera_move_speed < 1) camera_move_speed = 1;
 
                         gr3d.camera_yaw += gw.mouse_x_delta * CAMERA_SENSITIVITY;
@@ -540,58 +540,37 @@ int main(int argc, char* argv[]) { try {
 
                         const float camera_yaw_offsetted_45 = (uint16_t)(gr3d.camera_yaw + USHRT_MAX/8); // offsetting by 45-degrees (PI/4) to make it so the axes line up neatly for conditional checks (otherwise -Z (angle 0 (forward)) axis alignment check would be both less than 0 *and* greater than 0) (...might make more sense if you visualize it in your head (starts off as like a pizza sliced into 4 slices making an 'X' shape, then rotated 45-degrees to make the slice seams into a '+' shape))  // (re-casting to ushort to force ushort overflow)
 
-                        if (gw.input_states[GWindower::KEY_UP] && (gw.last_input_states[GWindower::KEY_UP] == false)) {
+                        const bool up_just_pressed = gw.input_states[GWindower::KEY_UP] && (gw.last_input_states[GWindower::KEY_UP] == false);
+                        const bool down_just_pressed = gw.input_states[GWindower::KEY_DOWN] && (gw.last_input_states[GWindower::KEY_DOWN] == false);
+                        if (up_just_pressed || down_just_pressed) {
+                                const float delta = -(float)down_just_pressed + (float)up_just_pressed;
                                 if (gw.input_states[GWindower::KEY_LEFT_SHIFT]) { if (GetSelectedMapObject()->base_registration->data.rotation) {
                                         float3 euler = GetSelectedMapObject()->GetEuler();
-                                        if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) euler.x += ROTATION_SNAP;
-                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) euler.z += ROTATION_SNAP;
-                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*2 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*3) euler.x -= ROTATION_SNAP;
-                                        else euler.z -= ROTATION_SNAP;
+                                        if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) euler.x += delta * ROTATION_SNAP;
+                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) euler.z += delta * ROTATION_SNAP;
+                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*2 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*3) euler.x -= delta * ROTATION_SNAP;
+                                        else euler.z -= delta * ROTATION_SNAP;
                                         GetSelectedMapObject()->SetEuler(euler);
                                 }}
-                                else if (gw.input_states[GWindower::KEY_LEFT_ALT]) { if (GetSelectedMapObject()->base_registration->data.scale) GetSelectedMapObject()->mesh_instance->scale[1] += SCALE_SNAP; }
-                                else { if (GetSelectedMapObject()->base_registration->data.position) GetSelectedMapObject()->mesh_instance->position[1] += POSITION_SNAP; }
+                                else if (gw.input_states[GWindower::KEY_LEFT_ALT]) { if (GetSelectedMapObject()->base_registration->data.scale) GetSelectedMapObject()->mesh_instance->scale[1] += delta * SCALE_SNAP; }
+                                else { if (GetSelectedMapObject()->base_registration->data.position) GetSelectedMapObject()->mesh_instance->position[1] += delta * POSITION_SNAP; }
                         }
-                        if (gw.input_states[GWindower::KEY_DOWN] && (gw.last_input_states[GWindower::KEY_DOWN] == false)) {
-                                if (gw.input_states[GWindower::KEY_LEFT_SHIFT]) { if (GetSelectedMapObject()->base_registration->data.rotation) {
-                                        float3 euler = GetSelectedMapObject()->GetEuler();
-                                        if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) euler.x -= ROTATION_SNAP;
-                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) euler.z -= ROTATION_SNAP;
-                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*2 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*3) euler.x += ROTATION_SNAP;
-                                        else euler.z += ROTATION_SNAP;
-                                        GetSelectedMapObject()->SetEuler(euler);
-                                }}
-                                else if (gw.input_states[GWindower::KEY_LEFT_ALT]) { if (GetSelectedMapObject()->base_registration->data.scale) GetSelectedMapObject()->mesh_instance->scale[1] -= SCALE_SNAP; }
-                                else { if (GetSelectedMapObject()->base_registration->data.position) GetSelectedMapObject()->mesh_instance->position[1] -= POSITION_SNAP; }
-                        }
-                        if (gw.input_states[GWindower::KEY_LEFT] && (gw.last_input_states[GWindower::KEY_LEFT] == false)) {
-                                if (gw.input_states[GWindower::KEY_LEFT_SHIFT]) { if (GetSelectedMapObject()->base_registration->data.rotation) { const float4 new_rot = linalg::qmul(linalg::rotation_quat(float3{0, 1, 0}, ROTATION_SNAP * (float)M_PI/180), float4{GetSelectedMapObject()->mesh_instance->rotation[0], GetSelectedMapObject()->mesh_instance->rotation[1], GetSelectedMapObject()->mesh_instance->rotation[2], GetSelectedMapObject()->mesh_instance->rotation[3]}); GetSelectedMapObject()->mesh_instance->rotation[0] = new_rot.x; GetSelectedMapObject()->mesh_instance->rotation[1] = new_rot.y; GetSelectedMapObject()->mesh_instance->rotation[2] = new_rot.z; GetSelectedMapObject()->mesh_instance->rotation[3] = new_rot.w; } }
+                        const bool right_just_pressed = gw.input_states[GWindower::KEY_RIGHT] && (gw.last_input_states[GWindower::KEY_RIGHT] == false);
+                        const bool left_just_pressed = gw.input_states[GWindower::KEY_LEFT] && (gw.last_input_states[GWindower::KEY_LEFT] == false);
+                        if (right_just_pressed || left_just_pressed) {
+                                const float delta = -(float)left_just_pressed + (float)right_just_pressed;
+                                if (gw.input_states[GWindower::KEY_LEFT_SHIFT]) { if (GetSelectedMapObject()->base_registration->data.rotation) { const float4 new_rot = linalg::qmul(linalg::rotation_quat(float3{0, 1, 0}, delta * -ROTATION_SNAP), float4{GetSelectedMapObject()->mesh_instance->rotation[0], GetSelectedMapObject()->mesh_instance->rotation[1], GetSelectedMapObject()->mesh_instance->rotation[2], GetSelectedMapObject()->mesh_instance->rotation[3]}); GetSelectedMapObject()->mesh_instance->rotation[0] = new_rot.x; GetSelectedMapObject()->mesh_instance->rotation[1] = new_rot.y; GetSelectedMapObject()->mesh_instance->rotation[2] = new_rot.z; GetSelectedMapObject()->mesh_instance->rotation[3] = new_rot.w; } }
                                 else if (gw.input_states[GWindower::KEY_LEFT_ALT]) { if (GetSelectedMapObject()->base_registration->data.scale) {
-                                        if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) GetSelectedMapObject()->mesh_instance->scale[0] -= SCALE_SNAP;
-                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) GetSelectedMapObject()->mesh_instance->scale[2] -= SCALE_SNAP;
-                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*2 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*3) GetSelectedMapObject()->mesh_instance->scale[0] -= SCALE_SNAP;
-                                        else GetSelectedMapObject()->mesh_instance->scale[2] -= SCALE_SNAP;
+                                        if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) GetSelectedMapObject()->mesh_instance->scale[0] += delta * SCALE_SNAP;
+                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) GetSelectedMapObject()->mesh_instance->scale[2] += delta * SCALE_SNAP;
+                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*2 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*3) GetSelectedMapObject()->mesh_instance->scale[0] += delta * SCALE_SNAP;
+                                        else GetSelectedMapObject()->mesh_instance->scale[2] += delta * SCALE_SNAP;
                                 }}
                                 else { if (GetSelectedMapObject()->base_registration->data.position) {
-                                        if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) GetSelectedMapObject()->mesh_instance->position[0] += POSITION_SNAP;
-                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) GetSelectedMapObject()->mesh_instance->position[2] += POSITION_SNAP;
-                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*2 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*3) GetSelectedMapObject()->mesh_instance->position[0] -= POSITION_SNAP;
-                                        else GetSelectedMapObject()->mesh_instance->position[2] -= POSITION_SNAP;
-                                }}
-                        }
-                        if (gw.input_states[GWindower::KEY_RIGHT] && (gw.last_input_states[GWindower::KEY_RIGHT] == false)) {
-                                if (gw.input_states[GWindower::KEY_LEFT_SHIFT]) { if (GetSelectedMapObject()->base_registration->data.rotation) { const float4 new_rot = linalg::qmul(linalg::rotation_quat(float3{0, 1, 0}, -ROTATION_SNAP * (float)M_PI/180), float4{GetSelectedMapObject()->mesh_instance->rotation[0], GetSelectedMapObject()->mesh_instance->rotation[1], GetSelectedMapObject()->mesh_instance->rotation[2], GetSelectedMapObject()->mesh_instance->rotation[3]}); GetSelectedMapObject()->mesh_instance->rotation[0] = new_rot.x; GetSelectedMapObject()->mesh_instance->rotation[1] = new_rot.y; GetSelectedMapObject()->mesh_instance->rotation[2] = new_rot.z; GetSelectedMapObject()->mesh_instance->rotation[3] = new_rot.w; } }
-                                else if (gw.input_states[GWindower::KEY_LEFT_ALT]) { if (GetSelectedMapObject()->base_registration->data.scale) {
-                                        if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) GetSelectedMapObject()->mesh_instance->scale[0] += SCALE_SNAP;
-                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) GetSelectedMapObject()->mesh_instance->scale[2] += SCALE_SNAP;
-                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*2 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*3) GetSelectedMapObject()->mesh_instance->scale[0] += SCALE_SNAP;
-                                        else GetSelectedMapObject()->mesh_instance->scale[2] += SCALE_SNAP;
-                                }}
-                                else { if (GetSelectedMapObject()->base_registration->data.position) {
-                                        if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) GetSelectedMapObject()->mesh_instance->position[0] -= POSITION_SNAP;
-                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) GetSelectedMapObject()->mesh_instance->position[2] -= POSITION_SNAP;
-                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*2 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*3) GetSelectedMapObject()->mesh_instance->position[0] += POSITION_SNAP;
-                                        else GetSelectedMapObject()->mesh_instance->position[2] += POSITION_SNAP;
+                                        if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) GetSelectedMapObject()->mesh_instance->position[0] -= delta * POSITION_SNAP;
+                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) GetSelectedMapObject()->mesh_instance->position[2] -= delta * POSITION_SNAP;
+                                        else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*2 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*3) GetSelectedMapObject()->mesh_instance->position[0] += delta * POSITION_SNAP;
+                                        else GetSelectedMapObject()->mesh_instance->position[2] += delta * POSITION_SNAP;
                                 }}
                         }
                 }
@@ -692,6 +671,7 @@ int main(int argc, char* argv[]) { try {
                                 } ImGui::End();
                         }
 
+                        // TODO
                         ImGui::SetNextWindowPos({(float)gw.window_width/2, (float)gw.window_height}, ImGuiCond_Always, {0.5f, 1.0f}); ImGui::SetNextWindowSizeConstraints({0.0f, 0.0f}, {gw.window_width/3.0f, FLT_MAX});
                         ImGui::Begin("INFO", NULL, (ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
                                 ImGui::Text("%.3f %.3f %.3f", gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]);
