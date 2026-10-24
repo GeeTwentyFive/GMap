@@ -376,7 +376,10 @@ int main(int argc, char* argv[]) { try {
                 for (MapObjectInstance* selected_map_object : *GetSelectedMapObjects()) { sum += *(float3*)selected_map_object->mesh_instance->position; }
                 return sum / GetSelectedMapObjects()->size();
         };
-        // TODO: RotateSelectedMapObjectsAroundCentroid()
+        auto RotateSelectedMapObjectsAroundCentroid = [&](float4 delta) {
+                const float3 centroid = GetSelectedMapObjectsCentroid();
+                // TODO
+        };
 
         glClearColor(0.0, 0.0, 0.0, 1.0);
         GFramePacer gfp;  // (frame limiting itself not needed because using v-sync (and wait-until-input), using lib for other frame-pacing-related benefits)
@@ -415,64 +418,65 @@ int main(int argc, char* argv[]) { try {
 
                 static GGizmo3D::WidgetIndex active_gizmo_widget = GGizmo3D::WidgetIndex::NONE;
 
-                // TODO  (`if (!GetSelectedMapObjects()->empty())`)
-                // if (show_ui) {
-                //         if (GetSelectedMapObject() != nullptr && (GetSelectedMapObject()->base_registration->data.position || GetSelectedMapObject()->base_registration->data.rotation || GetSelectedMapObject()->base_registration->data.scale)) {
-                //                 const float gizmo_scale = linalg::length(*(float3*)GetSelectedMapObject()->mesh_instance->position - *(float3*)gr3d.camera_pos);
-                //                 GGizmo3D gizmo(
-                //                         *(float3*)GetSelectedMapObject()->mesh_instance->position,
-                //                         GIZMO_WIDGET_LENGTH * gizmo_scale, GIZMO_WIDGET_WIDTH * gizmo_scale
-                //                 );
-                //                 const bool select_gizmo = gw.input_states[GWindower::MOUSEBUTTON_LEFT];
-                //                 const bool select_gizmo_just_pressed = select_gizmo && (gw.last_input_states[GWindower::MOUSEBUTTON_LEFT] == false);
-                //                 if (!select_gizmo || controlling_camera) active_gizmo_widget = GGizmo3D::WidgetIndex::NONE;
-                //                 else if (select_gizmo_just_pressed) {
-                //                         active_gizmo_widget = gizmo.Pick(
-                //                                 *(float3*)gr3d.camera_pos,
-                //                                 GMisc3DMath::ScreenToWorldRay(gw.cursor_x, gw.cursor_y, gw.window_width, gw.window_height, (float4x4*)gr3d.ViewProjection())
-                //                         );
-                //                 }
-                //                 const bool rotate = gw.input_states[GWindower::KEY_LEFT_SHIFT];
-                //                 const bool scale = gw.input_states[GWindower::KEY_LEFT_ALT];
-                //                 static auto DrawGizmoWidget = [&](GGizmo3D::WidgetIndex widget_index) { glr3d.DrawBox(gizmo.aabbs[widget_index].min.x, gizmo.aabbs[widget_index].min.y, gizmo.aabbs[widget_index].min.z, gizmo.aabbs[widget_index].max.x, gizmo.aabbs[widget_index].max.y, gizmo.aabbs[widget_index].max.z, GIZMO_WIDGET_COLORS[widget_index]); };
-                //                 switch (active_gizmo_widget) { default: { for (int i = 0; i < GGizmo3D::WidgetIndex::_count; i++) { DrawGizmoWidget((GGizmo3D::WidgetIndex)i); } } break;
-                //                         case GGizmo3D::WidgetIndex::Y_POSITIVE: case GGizmo3D::WidgetIndex::Y_NEGATIVE: { DrawGizmoWidget(GGizmo3D::WidgetIndex::Y_POSITIVE); DrawGizmoWidget(GGizmo3D::WidgetIndex::Y_NEGATIVE);
-                //                                 if (rotate) GetSelectedMapObject()->SetQuat(linalg::qmul(
-                //                                         linalg::rotation_quat({0, 1, 0}, gw.mouse_x_delta * -ROTATION_SNAP), *(float4*)GetSelectedMapObject()->mesh_instance->rotation
-                //                                 ));
-                //                                 else if (scale) GetSelectedMapObject()->SetScale(*(float3*)GetSelectedMapObject()->mesh_instance->scale + float3{0, (-gw.mouse_y_delta) * SCALE_SNAP, 0});
-                //                                 else {
-                //                                         const float delta = (-gw.mouse_y_delta) * POSITION_SNAP;
-                //                                         GetSelectedMapObject()->SetPosition(*(float3*)GetSelectedMapObject()->mesh_instance->position + float3{0, delta, 0}); gr3d.camera_pos[1] += delta;
-                //                                 }
-                //                         } break;
-                //                         case GGizmo3D::WidgetIndex::X_POSITIVE: case GGizmo3D::WidgetIndex::X_NEGATIVE: { DrawGizmoWidget(GGizmo3D::WidgetIndex::X_POSITIVE); DrawGizmoWidget(GGizmo3D::WidgetIndex::X_NEGATIVE);
-                //                                 if (rotate) {
-                //                                         float delta = (-gw.mouse_y_delta) * ROTATION_SNAP; if (gr3d.camera_yaw > (USHRT_MAX/4)*1 && gr3d.camera_yaw < (USHRT_MAX/4)*3) delta = -delta;
-                //                                         GetSelectedMapObject()->SetQuat(linalg::qmul(
-                //                                                 linalg::rotation_quat({1, 0, 0}, delta), *(float4*)GetSelectedMapObject()->mesh_instance->rotation
-                //                                         ));
-                //                                 } else if (scale) GetSelectedMapObject()->SetScale(*(float3*)GetSelectedMapObject()->mesh_instance->scale + float3{gw.mouse_x_delta * SCALE_SNAP, 0, 0});
-                //                                 else {
-                //                                         float delta = gw.mouse_x_delta * POSITION_SNAP; if (gr3d.camera_yaw > (USHRT_MAX/4)*1 && gr3d.camera_yaw < (USHRT_MAX/4)*3) delta = -delta;
-                //                                         GetSelectedMapObject()->SetPosition(*(float3*)GetSelectedMapObject()->mesh_instance->position + float3{-delta, 0, 0}); gr3d.camera_pos[0] -= delta;
-                //                                 }
-                //                         } break;
-                //                         case GGizmo3D::WidgetIndex::Z_POSITIVE: case GGizmo3D::WidgetIndex::Z_NEGATIVE: { DrawGizmoWidget(GGizmo3D::WidgetIndex::Z_POSITIVE); DrawGizmoWidget(GGizmo3D::WidgetIndex::Z_NEGATIVE);
-                //                                 if (rotate) {
-                //                                         float delta = (-gw.mouse_y_delta) * ROTATION_SNAP; if (gr3d.camera_yaw > (USHRT_MAX/4)*0 && gr3d.camera_yaw < (USHRT_MAX/4)*2) delta = -delta;
-                //                                         GetSelectedMapObject()->SetQuat(linalg::qmul(
-                //                                                 linalg::rotation_quat({0, 0, 1}, -delta), *(float4*)GetSelectedMapObject()->mesh_instance->rotation
-                //                                         ));
-                //                                 } else if (scale) GetSelectedMapObject()->SetScale(*(float3*)GetSelectedMapObject()->mesh_instance->scale + float3{0, 0, gw.mouse_x_delta * SCALE_SNAP});
-                //                                 else {
-                //                                         float delta = gw.mouse_x_delta * POSITION_SNAP; if (gr3d.camera_yaw > (USHRT_MAX/4)*0 && gr3d.camera_yaw < (USHRT_MAX/4)*2) delta = -delta;
-                //                                         GetSelectedMapObject()->SetPosition(*(float3*)GetSelectedMapObject()->mesh_instance->position + float3{0, 0, delta}); gr3d.camera_pos[2] += delta;
-                //                                 }
-                //                         } break;
-                //                 }
-                //         }
-                // }
+                if (show_ui) {
+                        if (!GetSelectedMapObjects()->empty()) {
+                                const float3 selected_map_objects_centroid = GetSelectedMapObjectsCentroid();
+                                const float gizmo_scale = linalg::length(selected_map_objects_centroid - *(float3*)gr3d.camera_pos);
+                                GGizmo3D gizmo(
+                                        selected_map_objects_centroid,
+                                        GIZMO_WIDGET_LENGTH * gizmo_scale, GIZMO_WIDGET_WIDTH * gizmo_scale
+                                );
+                                const bool select_gizmo = gw.input_states[GWindower::MOUSEBUTTON_LEFT];
+                                const bool select_gizmo_just_pressed = select_gizmo && (gw.last_input_states[GWindower::MOUSEBUTTON_LEFT] == false);
+                                if (!select_gizmo || controlling_camera || gw.input_states[GWindower::KEY_LEFT_CONTROL]) active_gizmo_widget = GGizmo3D::WidgetIndex::NONE;
+                                else if (select_gizmo_just_pressed) {
+                                        active_gizmo_widget = gizmo.Pick(
+                                                *(float3*)gr3d.camera_pos,
+                                                GMisc3DMath::ScreenToWorldRay(gw.cursor_x, gw.cursor_y, gw.window_width, gw.window_height, (float4x4*)gr3d.ViewProjection())
+                                        );
+                                }
+                                const bool rotate = gw.input_states[GWindower::KEY_LEFT_SHIFT];
+                                const bool scale = gw.input_states[GWindower::KEY_LEFT_ALT];
+                                static auto DrawGizmoWidget = [&](GGizmo3D::WidgetIndex widget_index) { glr3d.DrawBox(gizmo.aabbs[widget_index].min.x, gizmo.aabbs[widget_index].min.y, gizmo.aabbs[widget_index].min.z, gizmo.aabbs[widget_index].max.x, gizmo.aabbs[widget_index].max.y, gizmo.aabbs[widget_index].max.z, GIZMO_WIDGET_COLORS[widget_index]); };
+                                switch (active_gizmo_widget) { default: { for (int i = 0; i < GGizmo3D::WidgetIndex::_count; i++) { DrawGizmoWidget((GGizmo3D::WidgetIndex)i); } } break;
+                                        // TODO
+                                        // case GGizmo3D::WidgetIndex::Y_POSITIVE: case GGizmo3D::WidgetIndex::Y_NEGATIVE: { DrawGizmoWidget(GGizmo3D::WidgetIndex::Y_POSITIVE); DrawGizmoWidget(GGizmo3D::WidgetIndex::Y_NEGATIVE);
+                                        //         if (rotate) GetSelectedMapObject()->SetQuat(linalg::qmul(
+                                        //                 linalg::rotation_quat({0, 1, 0}, gw.mouse_x_delta * -ROTATION_SNAP), *(float4*)GetSelectedMapObject()->mesh_instance->rotation
+                                        //         ));
+                                        //         else if (scale) GetSelectedMapObject()->SetScale(*(float3*)GetSelectedMapObject()->mesh_instance->scale + float3{0, (-gw.mouse_y_delta) * SCALE_SNAP, 0});
+                                        //         else {
+                                        //                 const float delta = (-gw.mouse_y_delta) * POSITION_SNAP;
+                                        //                 GetSelectedMapObject()->SetPosition(*(float3*)GetSelectedMapObject()->mesh_instance->position + float3{0, delta, 0}); gr3d.camera_pos[1] += delta;
+                                        //         }
+                                        // } break;
+                                        // case GGizmo3D::WidgetIndex::X_POSITIVE: case GGizmo3D::WidgetIndex::X_NEGATIVE: { DrawGizmoWidget(GGizmo3D::WidgetIndex::X_POSITIVE); DrawGizmoWidget(GGizmo3D::WidgetIndex::X_NEGATIVE);
+                                        //         if (rotate) {
+                                        //                 float delta = (-gw.mouse_y_delta) * ROTATION_SNAP; if (gr3d.camera_yaw > (USHRT_MAX/4)*1 && gr3d.camera_yaw < (USHRT_MAX/4)*3) delta = -delta;
+                                        //                 GetSelectedMapObject()->SetQuat(linalg::qmul(
+                                        //                         linalg::rotation_quat({1, 0, 0}, delta), *(float4*)GetSelectedMapObject()->mesh_instance->rotation
+                                        //                 ));
+                                        //         } else if (scale) GetSelectedMapObject()->SetScale(*(float3*)GetSelectedMapObject()->mesh_instance->scale + float3{gw.mouse_x_delta * SCALE_SNAP, 0, 0});
+                                        //         else {
+                                        //                 float delta = gw.mouse_x_delta * POSITION_SNAP; if (gr3d.camera_yaw > (USHRT_MAX/4)*1 && gr3d.camera_yaw < (USHRT_MAX/4)*3) delta = -delta;
+                                        //                 GetSelectedMapObject()->SetPosition(*(float3*)GetSelectedMapObject()->mesh_instance->position + float3{-delta, 0, 0}); gr3d.camera_pos[0] -= delta;
+                                        //         }
+                                        // } break;
+                                        // case GGizmo3D::WidgetIndex::Z_POSITIVE: case GGizmo3D::WidgetIndex::Z_NEGATIVE: { DrawGizmoWidget(GGizmo3D::WidgetIndex::Z_POSITIVE); DrawGizmoWidget(GGizmo3D::WidgetIndex::Z_NEGATIVE);
+                                        //         if (rotate) {
+                                        //                 float delta = (-gw.mouse_y_delta) * ROTATION_SNAP; if (gr3d.camera_yaw > (USHRT_MAX/4)*0 && gr3d.camera_yaw < (USHRT_MAX/4)*2) delta = -delta;
+                                        //                 GetSelectedMapObject()->SetQuat(linalg::qmul(
+                                        //                         linalg::rotation_quat({0, 0, 1}, -delta), *(float4*)GetSelectedMapObject()->mesh_instance->rotation
+                                        //                 ));
+                                        //         } else if (scale) GetSelectedMapObject()->SetScale(*(float3*)GetSelectedMapObject()->mesh_instance->scale + float3{0, 0, gw.mouse_x_delta * SCALE_SNAP});
+                                        //         else {
+                                        //                 float delta = gw.mouse_x_delta * POSITION_SNAP; if (gr3d.camera_yaw > (USHRT_MAX/4)*0 && gr3d.camera_yaw < (USHRT_MAX/4)*2) delta = -delta;
+                                        //                 GetSelectedMapObject()->SetPosition(*(float3*)GetSelectedMapObject()->mesh_instance->position + float3{0, 0, delta}); gr3d.camera_pos[2] += delta;
+                                        //         }
+                                        // } break;
+                                }
+                        }
+                }
 
                 if (gw.input_states[GWindower::MOUSEBUTTON_LEFT] && (gw.last_input_states[GWindower::MOUSEBUTTON_LEFT] == false) && !controlling_camera && (active_gizmo_widget == GGizmo3D::WidgetIndex::NONE) && !ImGui::GetIO().WantCaptureMouse) {
                         MapObjectInstance* closest_hit_map_object = nullptr;
@@ -489,7 +493,7 @@ int main(int argc, char* argv[]) { try {
                                 }
                         }
                         if (closest_hit_map_object_distance != FLT_MAX) {
-                                if (gw.input_states[GWindower::KEY_LEFT_SHIFT]) {
+                                if (gw.input_states[GWindower::KEY_LEFT_CONTROL]) {
                                         bool was_already_selected = false;
                                         for (auto i = GetSelectedMapObjects()->begin(); i < GetSelectedMapObjects()->end(); i++) {
                                                 if (closest_hit_map_object == *i) {
@@ -501,13 +505,13 @@ int main(int argc, char* argv[]) { try {
                                 }
                                 else if (GetSelectedMapObjects()->size() != 1 || closest_hit_map_object != (*GetSelectedMapObjects())[0]) SetSelectedMapObjects({closest_hit_map_object});
                         }
-                        else if (!gw.input_states[GWindower::KEY_LEFT_SHIFT]) SetSelectedMapObjects({});  // (none hit; deselect)
+                        else if (!gw.input_states[GWindower::KEY_LEFT_CONTROL]) SetSelectedMapObjects({});  // (none hit; deselect)
                 }
-                if (gw.input_states[GWindower::KEY_LEFT_SHIFT] && gw.input_states[GWindower::KEY_A] && (gw.last_input_states[GWindower::KEY_A] == false)) {
+                if (gw.input_states[GWindower::KEY_LEFT_CONTROL] && gw.input_states[GWindower::KEY_A] && (gw.last_input_states[GWindower::KEY_A] == false)) {
                         SetSelectedMapObjects({});
                         for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) AddSelectedMapObject(map_object_instance.get());
                 }
-                if (gw.input_states[GWindower::KEY_LEFT_SHIFT] && gw.input_states[GWindower::KEY_X] && (gw.last_input_states[GWindower::KEY_X] == false)) SetSelectedMapObjects({});
+                if (gw.input_states[GWindower::KEY_LEFT_CONTROL] && gw.input_states[GWindower::KEY_X] && (gw.last_input_states[GWindower::KEY_X] == false)) SetSelectedMapObjects({});
 
                 if (!GetSelectedMapObjects()->empty()) {
                         if (gw.input_states[GWindower::KEY_LEFT_ALT] && gw.input_states[GWindower::KEY_C] && (gw.last_input_states[GWindower::KEY_C] == false)) {
