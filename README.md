@@ -1,5 +1,3 @@
-**WIP** (codebase currently in transitional/prototyping phase)
-
 ![](_assets/GMap.webp)
 
 Intended to be used either directly for new games by reading from output JSON, or by feeding output JSON into custom converter program which would convert it to an already existing map file format for an existing game
@@ -48,11 +46,13 @@ You can pass path to map/scene JSON file as first CLI arg to `GMap` to load it (
 	- Scroll = change camera move speed
 	- (CTRL+)Click = select/deselect object(s)
 	- 0 = reset camera position to 0, 0, 0
+- +Shift = rotate mode (for gizmo, arrows, ...)
+- +Alt = scale mode (for gizmo, arrows, ...)
 - Del = delete selected object(s)
 - Alt+D = duplicate selected object(s)
 - MMB = surface snap
 - Alt+MMB = lookat
-- CTRL+A = select all, CTRL+X = deselect all
+- CTRL+A = select all, X = deselect all
 
 
 # Example

@@ -62,13 +62,15 @@ const uint32_t GIZMO_WIDGET_COLORS[GGizmo3D::WidgetIndex::_count] = {
 };
 
 const char USAGE_TEXT[] = ""
-        "CONTROLS:\n"
+        "BASIC CONTROLS:\n"
         "- While right mouse button is held down:\n"
         "    - Mouse = rotate camera\n"
         "    - WASD, Space, CTRL = move camera\n"
         "    - Scroll = change camera move speed\n"
         "    - (CTRL+)Click = select/deselect object(s)\n"
         "    - 0 = reset camera position to 0, 0, 0\n"
+        "- +Shift = rotate mode (for gizmo, arrows, ...)\n"
+        "- +Alt = scale mode (for gizmo, arrows, ...)\n"
         "- Del = delete selected object(s)\n"
         "- Alt+C = clone selected object(s)"
 "";
@@ -507,7 +509,7 @@ int main(int argc, char* argv[]) { try {
                         SetSelectedMapObjects({});
                         for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) AddSelectedMapObject(map_object_instance.get());
                 }
-                if (gw.input_states[GWindower::KEY_LEFT_CONTROL] && gw.input_states[GWindower::KEY_X] && (gw.last_input_states[GWindower::KEY_X] == false) && !controlling_camera) SetSelectedMapObjects({});
+                if (gw.input_states[GWindower::KEY_X] && (gw.last_input_states[GWindower::KEY_X] == false) && !controlling_camera) SetSelectedMapObjects({});
 
                 if (!GetSelectedMapObjects()->empty()) {
                         if (gw.input_states[GWindower::KEY_LEFT_ALT] && gw.input_states[GWindower::KEY_C] && (gw.last_input_states[GWindower::KEY_C] == false)) {
