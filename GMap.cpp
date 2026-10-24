@@ -67,10 +67,10 @@ const char USAGE_TEXT[] = ""
         "    - Mouse = rotate camera\n"
         "    - WASD, Space, CTRL = move camera\n"
         "    - Scroll = change camera move speed\n"
-        "    - Click = select/deselect object\n"
+        "    - (CTRL+)Click = select/deselect object(s)\n"
         "    - 0 = reset camera position to 0, 0, 0\n"
-        "- Del = delete selected object\n"
-        "- Alt+C = clone selected object"
+        "- Del = delete selected object(s)\n"
+        "- Alt+C = clone selected object(s)"
 "";
 
 
