@@ -577,38 +577,41 @@ int main(int argc, char* argv[]) { try {
 
                         const float camera_yaw_offsetted_45 = (uint16_t)(gr3d.camera_yaw + USHRT_MAX/8); // offsetting by 45-degrees (PI/4) to make it so the axes line up neatly for conditional checks (otherwise -Z (angle 0 (forward)) axis alignment check would be both less than 0 *and* greater than 0) (...might make more sense if you visualize it in your head (starts off as like a pizza sliced into 4 slices making an 'X' shape, then rotated 45-degrees to make the slice seams into a '+' shape))  // (re-casting to ushort to force ushort overflow)
 
-                        // TODO
-                        // const bool up_just_pressed = gw.input_states[GWindower::KEY_UP] && (gw.last_input_states[GWindower::KEY_UP] == false);
-                        // const bool down_just_pressed = gw.input_states[GWindower::KEY_DOWN] && (gw.last_input_states[GWindower::KEY_DOWN] == false);
-                        // if (up_just_pressed || down_just_pressed) {
-                        //         const float delta = -(float)down_just_pressed + (float)up_just_pressed;
-                        //         if (gw.input_states[GWindower::KEY_LEFT_SHIFT]) {
-                        //                 if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) GetSelectedMapObject()->SetQuat(linalg::qmul(linalg::rotation_quat({delta, 0, 0}, ROTATION_SNAP), *(float4*)GetSelectedMapObject()->mesh_instance->rotation));
-                        //                 else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) GetSelectedMapObject()->SetQuat(linalg::qmul(linalg::rotation_quat({0, 0, delta}, ROTATION_SNAP), *(float4*)GetSelectedMapObject()->mesh_instance->rotation));
-                        //                 else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*2 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*3) GetSelectedMapObject()->SetQuat(linalg::qmul(linalg::rotation_quat({-delta, 0, 0}, ROTATION_SNAP), *(float4*)GetSelectedMapObject()->mesh_instance->rotation));
-                        //                 else GetSelectedMapObject()->SetQuat(linalg::qmul(linalg::rotation_quat({0, 0, -delta}, ROTATION_SNAP), *(float4*)GetSelectedMapObject()->mesh_instance->rotation));
-                        //         }
-                        //         else if (gw.input_states[GWindower::KEY_LEFT_ALT]) GetSelectedMapObject()->SetScale(*(float3*)GetSelectedMapObject()->mesh_instance->scale + float3{0, delta * SCALE_SNAP, 0});
-                        //         else GetSelectedMapObject()->SetPosition(*(float3*)GetSelectedMapObject()->mesh_instance->position + float3{0, delta * POSITION_SNAP, 0});
-                        // }
-                        // const bool right_just_pressed = gw.input_states[GWindower::KEY_RIGHT] && (gw.last_input_states[GWindower::KEY_RIGHT] == false);
-                        // const bool left_just_pressed = gw.input_states[GWindower::KEY_LEFT] && (gw.last_input_states[GWindower::KEY_LEFT] == false);
-                        // if (right_just_pressed || left_just_pressed) {
-                        //         const float delta = -(float)left_just_pressed + (float)right_just_pressed;
-                        //         if (gw.input_states[GWindower::KEY_LEFT_SHIFT]) GetSelectedMapObject()->SetQuat(linalg::qmul(linalg::rotation_quat({0, delta, 0}, -ROTATION_SNAP), *(float4*)GetSelectedMapObject()->mesh_instance->rotation));
-                        //         else if (gw.input_states[GWindower::KEY_LEFT_ALT]) {
-                        //                 if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) GetSelectedMapObject()->SetScale(*(float3*)GetSelectedMapObject()->mesh_instance->scale + float3{delta * SCALE_SNAP, 0, 0});
-                        //                 else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) GetSelectedMapObject()->SetScale(*(float3*)GetSelectedMapObject()->mesh_instance->scale + float3{0, 0, delta * SCALE_SNAP});
-                        //                 else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*2 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*3) GetSelectedMapObject()->SetScale(*(float3*)GetSelectedMapObject()->mesh_instance->scale + float3{delta * SCALE_SNAP, 0, 0});
-                        //                 else GetSelectedMapObject()->SetScale(*(float3*)GetSelectedMapObject()->mesh_instance->scale + float3{0, 0, delta * SCALE_SNAP});
-                        //         }
-                        //         else { if (GetSelectedMapObject()->base_registration->data.position) {
-                        //                 if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) GetSelectedMapObject()->SetPosition(*(float3*)GetSelectedMapObject()->mesh_instance->position + float3{-delta * POSITION_SNAP, 0, 0});
-                        //                 else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) GetSelectedMapObject()->SetPosition(*(float3*)GetSelectedMapObject()->mesh_instance->position + float3{0, 0, -delta * POSITION_SNAP});
-                        //                 else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*2 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*3) GetSelectedMapObject()->SetPosition(*(float3*)GetSelectedMapObject()->mesh_instance->position + float3{delta * POSITION_SNAP, 0, 0});
-                        //                 else GetSelectedMapObject()->SetPosition(*(float3*)GetSelectedMapObject()->mesh_instance->position + float3{0, 0, delta * POSITION_SNAP});
-                        //         }}
-                        // }
+                        const bool up_just_pressed = gw.input_states[GWindower::KEY_UP] && (gw.last_input_states[GWindower::KEY_UP] == false);
+                        const bool down_just_pressed = gw.input_states[GWindower::KEY_DOWN] && (gw.last_input_states[GWindower::KEY_DOWN] == false);
+                        if (up_just_pressed || down_just_pressed) {
+                                const float delta = -(float)down_just_pressed + (float)up_just_pressed;
+                                for (MapObjectInstance* selected_map_object : *GetSelectedMapObjects()) {
+                                        if (gw.input_states[GWindower::KEY_LEFT_SHIFT]) {
+                                                if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) selected_map_object->SetQuat(linalg::qmul(linalg::rotation_quat({delta, 0, 0}, ROTATION_SNAP), *(float4*)selected_map_object->mesh_instance->rotation));
+                                                else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) selected_map_object->SetQuat(linalg::qmul(linalg::rotation_quat({0, 0, delta}, ROTATION_SNAP), *(float4*)selected_map_object->mesh_instance->rotation));
+                                                else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*2 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*3) selected_map_object->SetQuat(linalg::qmul(linalg::rotation_quat({-delta, 0, 0}, ROTATION_SNAP), *(float4*)selected_map_object->mesh_instance->rotation));
+                                                else selected_map_object->SetQuat(linalg::qmul(linalg::rotation_quat({0, 0, -delta}, ROTATION_SNAP), *(float4*)selected_map_object->mesh_instance->rotation));
+                                        }
+                                        else if (gw.input_states[GWindower::KEY_LEFT_ALT]) selected_map_object->SetScale(*(float3*)selected_map_object->mesh_instance->scale + float3{0, delta * SCALE_SNAP, 0});
+                                        else selected_map_object->SetPosition(*(float3*)selected_map_object->mesh_instance->position + float3{0, delta * POSITION_SNAP, 0});
+                                }
+                        }
+                        const bool right_just_pressed = gw.input_states[GWindower::KEY_RIGHT] && (gw.last_input_states[GWindower::KEY_RIGHT] == false);
+                        const bool left_just_pressed = gw.input_states[GWindower::KEY_LEFT] && (gw.last_input_states[GWindower::KEY_LEFT] == false);
+                        if (right_just_pressed || left_just_pressed) {
+                                const float delta = -(float)left_just_pressed + (float)right_just_pressed;
+                                for (MapObjectInstance* selected_map_object : *GetSelectedMapObjects()) {
+                                        if (gw.input_states[GWindower::KEY_LEFT_SHIFT]) selected_map_object->SetQuat(linalg::qmul(linalg::rotation_quat({0, delta, 0}, -ROTATION_SNAP), *(float4*)selected_map_object->mesh_instance->rotation));
+                                        else if (gw.input_states[GWindower::KEY_LEFT_ALT]) {
+                                                if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) selected_map_object->SetScale(*(float3*)selected_map_object->mesh_instance->scale + float3{delta * SCALE_SNAP, 0, 0});
+                                                else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) selected_map_object->SetScale(*(float3*)selected_map_object->mesh_instance->scale + float3{0, 0, delta * SCALE_SNAP});
+                                                else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*2 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*3) selected_map_object->SetScale(*(float3*)selected_map_object->mesh_instance->scale + float3{delta * SCALE_SNAP, 0, 0});
+                                                else selected_map_object->SetScale(*(float3*)selected_map_object->mesh_instance->scale + float3{0, 0, delta * SCALE_SNAP});
+                                        }
+                                        else { if (selected_map_object->base_registration->data.position) {
+                                                if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) selected_map_object->SetPosition(*(float3*)selected_map_object->mesh_instance->position + float3{-delta * POSITION_SNAP, 0, 0});
+                                                else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) selected_map_object->SetPosition(*(float3*)selected_map_object->mesh_instance->position + float3{0, 0, -delta * POSITION_SNAP});
+                                                else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*2 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*3) selected_map_object->SetPosition(*(float3*)selected_map_object->mesh_instance->position + float3{delta * POSITION_SNAP, 0, 0});
+                                                else selected_map_object->SetPosition(*(float3*)selected_map_object->mesh_instance->position + float3{0, 0, delta * POSITION_SNAP});
+                                        }}
+                                }
+                        }
                 }
 
                 static bool show_quit_dialog = false;
