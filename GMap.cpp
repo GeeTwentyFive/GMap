@@ -430,7 +430,7 @@ int main(int argc, char* argv[]) { try {
                                 switch (active_gizmo_widget) { default: { for (int i = 0; i < GGizmo3D::WidgetIndex::_count; i++) { DrawGizmoWidget((GGizmo3D::WidgetIndex)i); } } break;
                                         case GGizmo3D::WidgetIndex::Y_POSITIVE: case GGizmo3D::WidgetIndex::Y_NEGATIVE: { DrawGizmoWidget(GGizmo3D::WidgetIndex::Y_POSITIVE); DrawGizmoWidget(GGizmo3D::WidgetIndex::Y_NEGATIVE);
                                                 if (rotate) GetSelectedMapObject()->SetQuat(linalg::qmul(
-                                                        linalg::rotation_quat({0, 1, 0}, gw.mouse_x_delta * ROTATION_SNAP), *(float4*)GetSelectedMapObject()->mesh_instance->rotation
+                                                        linalg::rotation_quat({0, 1, 0}, gw.mouse_x_delta * -ROTATION_SNAP), *(float4*)GetSelectedMapObject()->mesh_instance->rotation
                                                 ));
                                                 else if (scale) GetSelectedMapObject()->SetScale(*(float3*)GetSelectedMapObject()->mesh_instance->scale + float3{0, (-gw.mouse_y_delta) * SCALE_SNAP, 0});
                                                 else {
@@ -444,12 +444,10 @@ int main(int argc, char* argv[]) { try {
                                                         GetSelectedMapObject()->SetQuat(linalg::qmul(
                                                                 linalg::rotation_quat({1, 0, 0}, delta), *(float4*)GetSelectedMapObject()->mesh_instance->rotation
                                                         ));
-                                                } else if (scale) {
-                                                        float delta = gw.mouse_x_delta * SCALE_SNAP; if (gr3d.camera_yaw > (USHRT_MAX/4)*1 && gr3d.camera_yaw < (USHRT_MAX/4)*3) delta = -delta;
-                                                        GetSelectedMapObject()->SetScale(*(float3*)GetSelectedMapObject()->mesh_instance->scale + float3{delta, 0, 0});
-                                                } else {
+                                                } else if (scale) GetSelectedMapObject()->SetScale(*(float3*)GetSelectedMapObject()->mesh_instance->scale + float3{gw.mouse_x_delta * SCALE_SNAP, 0, 0});
+                                                else {
                                                         float delta = gw.mouse_x_delta * POSITION_SNAP; if (gr3d.camera_yaw > (USHRT_MAX/4)*1 && gr3d.camera_yaw < (USHRT_MAX/4)*3) delta = -delta;
-                                                        GetSelectedMapObject()->SetPosition(*(float3*)GetSelectedMapObject()->mesh_instance->position + float3{delta, 0, 0}); gr3d.camera_pos[0] -= delta;
+                                                        GetSelectedMapObject()->SetPosition(*(float3*)GetSelectedMapObject()->mesh_instance->position + float3{-delta, 0, 0}); gr3d.camera_pos[0] -= delta;
                                                 }
                                         } break;
                                         case GGizmo3D::WidgetIndex::Z_POSITIVE: case GGizmo3D::WidgetIndex::Z_NEGATIVE: { DrawGizmoWidget(GGizmo3D::WidgetIndex::Z_POSITIVE); DrawGizmoWidget(GGizmo3D::WidgetIndex::Z_NEGATIVE);
@@ -458,10 +456,8 @@ int main(int argc, char* argv[]) { try {
                                                         GetSelectedMapObject()->SetQuat(linalg::qmul(
                                                                 linalg::rotation_quat({0, 0, 1}, -delta), *(float4*)GetSelectedMapObject()->mesh_instance->rotation
                                                         ));
-                                                } else if (scale) {
-                                                        float delta = gw.mouse_x_delta * SCALE_SNAP; if (gr3d.camera_yaw > (USHRT_MAX/4)*0 && gr3d.camera_yaw < (USHRT_MAX/4)*2) delta = -delta;
-                                                        GetSelectedMapObject()->SetScale(*(float3*)GetSelectedMapObject()->mesh_instance->scale + float3{0, 0, delta});
-                                                } else {
+                                                } else if (scale) GetSelectedMapObject()->SetScale(*(float3*)GetSelectedMapObject()->mesh_instance->scale + float3{0, 0, gw.mouse_x_delta * SCALE_SNAP});
+                                                else {
                                                         float delta = gw.mouse_x_delta * POSITION_SNAP; if (gr3d.camera_yaw > (USHRT_MAX/4)*0 && gr3d.camera_yaw < (USHRT_MAX/4)*2) delta = -delta;
                                                         GetSelectedMapObject()->SetPosition(*(float3*)GetSelectedMapObject()->mesh_instance->position + float3{0, 0, delta}); gr3d.camera_pos[2] += delta;
                                                 }
