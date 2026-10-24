@@ -409,7 +409,7 @@ int main(int argc, char* argv[]) { try {
 
                 static GGizmo3D::WidgetIndex active_gizmo_widget = GGizmo3D::WidgetIndex::NONE;
 
-                // TODO (`if (!GetSelectedMapObjects()->empty())`)
+                // TODO  (`if (!GetSelectedMapObjects()->empty())`)
                 // if (show_ui) {
                 //         if (GetSelectedMapObject() != nullptr && (GetSelectedMapObject()->base_registration->data.position || GetSelectedMapObject()->base_registration->data.rotation || GetSelectedMapObject()->base_registration->data.scale)) {
                 //                 const float gizmo_scale = linalg::length(*(float3*)GetSelectedMapObject()->mesh_instance->position - *(float3*)gr3d.camera_pos);
@@ -503,96 +503,106 @@ int main(int argc, char* argv[]) { try {
                 }
                 if (gw.input_states[GWindower::KEY_LEFT_SHIFT] && gw.input_states[GWindower::KEY_X] && (gw.last_input_states[GWindower::KEY_X] == false)) SetSelectedMapObjects({});
 
-                // TODO
-                // if (GetSelectedMapObject() != nullptr) {
-                //         if (gw.input_states[GWindower::KEY_LEFT_ALT] && gw.input_states[GWindower::KEY_C] && (gw.last_input_states[GWindower::KEY_C] == false) && GetSelectedMapObject() != nullptr) SetSelectedMapObject(GetSelectedMapObject()->Clone());
+                if (!GetSelectedMapObjects()->empty()) {
+                        if (gw.input_states[GWindower::KEY_LEFT_ALT] && gw.input_states[GWindower::KEY_C] && (gw.last_input_states[GWindower::KEY_C] == false)) {
+                                std::vector<MapObjectInstance*> new_selection; new_selection.reserve(GetSelectedMapObjects()->size());
+                                for (MapObjectInstance* selected_map_object : *GetSelectedMapObjects()) {
+                                        new_selection.push_back(selected_map_object->Clone());
+                                }
+                                SetSelectedMapObjects(new_selection);
+                        }
 
-                //         if (gw.input_states[GWindower::KEY_DELETE] && GetSelectedMapObject() != nullptr) { GetSelectedMapObject()->Delete(); SetSelectedMapObject(); }
+                        if (gw.input_states[GWindower::KEY_DELETE] && (gw.last_input_states[GWindower::KEY_DELETE] == false)) {
+                                for (MapObjectInstance* selected_map_object : *GetSelectedMapObjects()) selected_map_object->Delete();
+                                SetSelectedMapObjects({});
+                        }
 
-                //         if (gw.input_states[GWindower::MOUSEBUTTON_MIDDLE]) {
-                //                 if (gw.input_states[GWindower::KEY_LEFT_ALT] && GetSelectedMapObject()->base_registration->data.rotation) {  // lookat
-                //                         float3 target_point;
-                //                         float closest_hit_map_object_distance = FLT_MAX;
-                //                         for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) { if (map_object_instance.get() == GetSelectedMapObject()) continue;  // (ignore selected obj)
-                //                                 gcollision2::AABB map_object_instance_aabb = map_object_instance->WorldAABB();
-                //                                 float hit_map_object_distance;
-                //                                 float3 hit_map_object_point;
-                //                                 if (gcollision2::IntersectRayAABB(
-                //                                         float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]},
-                //                                         GMisc3DMath::ScreenToWorldRay(gw.cursor_x, gw.cursor_y, gw.window_width, gw.window_height, (float4x4*)gr3d.ViewProjection()),
-                //                                         map_object_instance_aabb, &hit_map_object_distance,
-                //                                         &hit_map_object_point
-                //                                 )) if (hit_map_object_distance < closest_hit_map_object_distance) { closest_hit_map_object_distance = hit_map_object_distance;
-                //                                         target_point = hit_map_object_point;
-                //                                 }
-                //                         }
-                //                         if (closest_hit_map_object_distance != FLT_MAX) {
-                //                                 const float4x4 lookat_matrix = linalg::lookat_matrix(
-                //                                         float3{GetSelectedMapObject()->mesh_instance->position[0], GetSelectedMapObject()->mesh_instance->position[1], GetSelectedMapObject()->mesh_instance->position[2]},
-                //                                         target_point, float3{0, 1, 0}, linalg::fwd_axis::pos_z
-                //                                 );
-                //                                 GetSelectedMapObject()->SetQuat(linalg::rotation_quat(float3x3{lookat_matrix.row(0).xyz(), lookat_matrix.row(1).xyz(), lookat_matrix.row(2).xyz()}));
-                //                         }
-                //                 }
-                //                 else if (GetSelectedMapObject()->base_registration->data.position) {  // surface snap
-                //                         float3 target_point, target_normal;
-                //                         float closest_hit_map_object_distance = FLT_MAX;
-                //                         for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) { if (map_object_instance.get() == GetSelectedMapObject()) continue;  // (ignore selected obj)
-                //                                 gcollision2::AABB map_object_instance_aabb = map_object_instance->WorldAABB();
-                //                                 float hit_map_object_distance;
-                //                                 float3 hit_map_object_point, hit_map_object_normal; bool ray_inside;
-                //                                 if (gcollision2::IntersectRayAABB(
-                //                                         float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]},
-                //                                         GMisc3DMath::ScreenToWorldRay(gw.cursor_x, gw.cursor_y, gw.window_width, gw.window_height, (float4x4*)gr3d.ViewProjection()),
-                //                                         map_object_instance_aabb, &hit_map_object_distance,
-                //                                         &hit_map_object_point, &hit_map_object_normal, &ray_inside
-                //                                 )) if (hit_map_object_distance < closest_hit_map_object_distance) { closest_hit_map_object_distance = hit_map_object_distance;
-                //                                         target_point = hit_map_object_point;
-                //                                         target_normal = (ray_inside ? -hit_map_object_normal : hit_map_object_normal);
-                //                                 }
-                //                         }
-                //                         if (closest_hit_map_object_distance != FLT_MAX) {
-                //                                 const float3 align_offset = (target_normal * GetSelectedMapObject()->WorldAABB().GetSize()/2.0f) - GetSelectedMapObject()->LocalAABB()->GetCenterPos();
-                //                                 target_point = linalg::round(target_point / POSITION_SNAP) * POSITION_SNAP;
-                //                                 GetSelectedMapObject()->mesh_instance->position[0] = target_point.x + align_offset.x; GetSelectedMapObject()->mesh_instance->position[1] = target_point.y + align_offset.y; GetSelectedMapObject()->mesh_instance->position[2] = target_point.z + align_offset.z;
-                //                         }
-                //                 }
-                //         }
+                        // TODO
+                        // if (gw.input_states[GWindower::MOUSEBUTTON_MIDDLE]) {
+                        //         if (gw.input_states[GWindower::KEY_LEFT_ALT] && GetSelectedMapObject()->base_registration->data.rotation) {  // lookat
+                        //                 float3 target_point;
+                        //                 float closest_hit_map_object_distance = FLT_MAX;
+                        //                 for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) { if (map_object_instance.get() == GetSelectedMapObject()) continue;  // (ignore selected obj)
+                        //                         gcollision2::AABB map_object_instance_aabb = map_object_instance->WorldAABB();
+                        //                         float hit_map_object_distance;
+                        //                         float3 hit_map_object_point;
+                        //                         if (gcollision2::IntersectRayAABB(
+                        //                                 float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]},
+                        //                                 GMisc3DMath::ScreenToWorldRay(gw.cursor_x, gw.cursor_y, gw.window_width, gw.window_height, (float4x4*)gr3d.ViewProjection()),
+                        //                                 map_object_instance_aabb, &hit_map_object_distance,
+                        //                                 &hit_map_object_point
+                        //                         )) if (hit_map_object_distance < closest_hit_map_object_distance) { closest_hit_map_object_distance = hit_map_object_distance;
+                        //                                 target_point = hit_map_object_point;
+                        //                         }
+                        //                 }
+                        //                 if (closest_hit_map_object_distance != FLT_MAX) {
+                        //                         const float4x4 lookat_matrix = linalg::lookat_matrix(
+                        //                                 float3{GetSelectedMapObject()->mesh_instance->position[0], GetSelectedMapObject()->mesh_instance->position[1], GetSelectedMapObject()->mesh_instance->position[2]},
+                        //                                 target_point, float3{0, 1, 0}, linalg::fwd_axis::pos_z
+                        //                         );
+                        //                         GetSelectedMapObject()->SetQuat(linalg::rotation_quat(float3x3{lookat_matrix.row(0).xyz(), lookat_matrix.row(1).xyz(), lookat_matrix.row(2).xyz()}));
+                        //                 }
+                        //         }
+                        //         else if (GetSelectedMapObject()->base_registration->data.position) {  // surface snap
+                        //                 float3 target_point, target_normal;
+                        //                 float closest_hit_map_object_distance = FLT_MAX;
+                        //                 for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) { if (map_object_instance.get() == GetSelectedMapObject()) continue;  // (ignore selected obj)
+                        //                         gcollision2::AABB map_object_instance_aabb = map_object_instance->WorldAABB();
+                        //                         float hit_map_object_distance;
+                        //                         float3 hit_map_object_point, hit_map_object_normal; bool ray_inside;
+                        //                         if (gcollision2::IntersectRayAABB(
+                        //                                 float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]},
+                        //                                 GMisc3DMath::ScreenToWorldRay(gw.cursor_x, gw.cursor_y, gw.window_width, gw.window_height, (float4x4*)gr3d.ViewProjection()),
+                        //                                 map_object_instance_aabb, &hit_map_object_distance,
+                        //                                 &hit_map_object_point, &hit_map_object_normal, &ray_inside
+                        //                         )) if (hit_map_object_distance < closest_hit_map_object_distance) { closest_hit_map_object_distance = hit_map_object_distance;
+                        //                                 target_point = hit_map_object_point;
+                        //                                 target_normal = (ray_inside ? -hit_map_object_normal : hit_map_object_normal);
+                        //                         }
+                        //                 }
+                        //                 if (closest_hit_map_object_distance != FLT_MAX) {
+                        //                         const float3 align_offset = (target_normal * GetSelectedMapObject()->WorldAABB().GetSize()/2.0f) - GetSelectedMapObject()->LocalAABB()->GetCenterPos();
+                        //                         target_point = linalg::round(target_point / POSITION_SNAP) * POSITION_SNAP;
+                        //                         GetSelectedMapObject()->mesh_instance->position[0] = target_point.x + align_offset.x; GetSelectedMapObject()->mesh_instance->position[1] = target_point.y + align_offset.y; GetSelectedMapObject()->mesh_instance->position[2] = target_point.z + align_offset.z;
+                        //                 }
+                        //         }
+                        // }
 
-                //         const float camera_yaw_offsetted_45 = (uint16_t)(gr3d.camera_yaw + USHRT_MAX/8); // offsetting by 45-degrees (PI/4) to make it so the axes line up neatly for conditional checks (otherwise -Z (angle 0 (forward)) axis alignment check would be both less than 0 *and* greater than 0) (...might make more sense if you visualize it in your head (starts off as like a pizza sliced into 4 slices making an 'X' shape, then rotated 45-degrees to make the slice seams into a '+' shape))  // (re-casting to ushort to force ushort overflow)
+                        const float camera_yaw_offsetted_45 = (uint16_t)(gr3d.camera_yaw + USHRT_MAX/8); // offsetting by 45-degrees (PI/4) to make it so the axes line up neatly for conditional checks (otherwise -Z (angle 0 (forward)) axis alignment check would be both less than 0 *and* greater than 0) (...might make more sense if you visualize it in your head (starts off as like a pizza sliced into 4 slices making an 'X' shape, then rotated 45-degrees to make the slice seams into a '+' shape))  // (re-casting to ushort to force ushort overflow)
 
-                //         const bool up_just_pressed = gw.input_states[GWindower::KEY_UP] && (gw.last_input_states[GWindower::KEY_UP] == false);
-                //         const bool down_just_pressed = gw.input_states[GWindower::KEY_DOWN] && (gw.last_input_states[GWindower::KEY_DOWN] == false);
-                //         if (up_just_pressed || down_just_pressed) {
-                //                 const float delta = -(float)down_just_pressed + (float)up_just_pressed;
-                //                 if (gw.input_states[GWindower::KEY_LEFT_SHIFT]) {
-                //                         if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) GetSelectedMapObject()->SetQuat(linalg::qmul(linalg::rotation_quat({delta, 0, 0}, ROTATION_SNAP), *(float4*)GetSelectedMapObject()->mesh_instance->rotation));
-                //                         else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) GetSelectedMapObject()->SetQuat(linalg::qmul(linalg::rotation_quat({0, 0, delta}, ROTATION_SNAP), *(float4*)GetSelectedMapObject()->mesh_instance->rotation));
-                //                         else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*2 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*3) GetSelectedMapObject()->SetQuat(linalg::qmul(linalg::rotation_quat({-delta, 0, 0}, ROTATION_SNAP), *(float4*)GetSelectedMapObject()->mesh_instance->rotation));
-                //                         else GetSelectedMapObject()->SetQuat(linalg::qmul(linalg::rotation_quat({0, 0, -delta}, ROTATION_SNAP), *(float4*)GetSelectedMapObject()->mesh_instance->rotation));
-                //                 }
-                //                 else if (gw.input_states[GWindower::KEY_LEFT_ALT]) GetSelectedMapObject()->SetScale(*(float3*)GetSelectedMapObject()->mesh_instance->scale + float3{0, delta * SCALE_SNAP, 0});
-                //                 else GetSelectedMapObject()->SetPosition(*(float3*)GetSelectedMapObject()->mesh_instance->position + float3{0, delta * POSITION_SNAP, 0});
-                //         }
-                //         const bool right_just_pressed = gw.input_states[GWindower::KEY_RIGHT] && (gw.last_input_states[GWindower::KEY_RIGHT] == false);
-                //         const bool left_just_pressed = gw.input_states[GWindower::KEY_LEFT] && (gw.last_input_states[GWindower::KEY_LEFT] == false);
-                //         if (right_just_pressed || left_just_pressed) {
-                //                 const float delta = -(float)left_just_pressed + (float)right_just_pressed;
-                //                 if (gw.input_states[GWindower::KEY_LEFT_SHIFT]) GetSelectedMapObject()->SetQuat(linalg::qmul(linalg::rotation_quat({0, delta, 0}, -ROTATION_SNAP), *(float4*)GetSelectedMapObject()->mesh_instance->rotation));
-                //                 else if (gw.input_states[GWindower::KEY_LEFT_ALT]) {
-                //                         if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) GetSelectedMapObject()->SetScale(*(float3*)GetSelectedMapObject()->mesh_instance->scale + float3{delta * SCALE_SNAP, 0, 0});
-                //                         else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) GetSelectedMapObject()->SetScale(*(float3*)GetSelectedMapObject()->mesh_instance->scale + float3{0, 0, delta * SCALE_SNAP});
-                //                         else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*2 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*3) GetSelectedMapObject()->SetScale(*(float3*)GetSelectedMapObject()->mesh_instance->scale + float3{delta * SCALE_SNAP, 0, 0});
-                //                         else GetSelectedMapObject()->SetScale(*(float3*)GetSelectedMapObject()->mesh_instance->scale + float3{0, 0, delta * SCALE_SNAP});
-                //                 }
-                //                 else { if (GetSelectedMapObject()->base_registration->data.position) {
-                //                         if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) GetSelectedMapObject()->SetPosition(*(float3*)GetSelectedMapObject()->mesh_instance->position + float3{-delta * POSITION_SNAP, 0, 0});
-                //                         else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) GetSelectedMapObject()->SetPosition(*(float3*)GetSelectedMapObject()->mesh_instance->position + float3{0, 0, -delta * POSITION_SNAP});
-                //                         else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*2 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*3) GetSelectedMapObject()->SetPosition(*(float3*)GetSelectedMapObject()->mesh_instance->position + float3{delta * POSITION_SNAP, 0, 0});
-                //                         else GetSelectedMapObject()->SetPosition(*(float3*)GetSelectedMapObject()->mesh_instance->position + float3{0, 0, delta * POSITION_SNAP});
-                //                 }}
-                //         }
-                // }
+                        // TODO
+                        // const bool up_just_pressed = gw.input_states[GWindower::KEY_UP] && (gw.last_input_states[GWindower::KEY_UP] == false);
+                        // const bool down_just_pressed = gw.input_states[GWindower::KEY_DOWN] && (gw.last_input_states[GWindower::KEY_DOWN] == false);
+                        // if (up_just_pressed || down_just_pressed) {
+                        //         const float delta = -(float)down_just_pressed + (float)up_just_pressed;
+                        //         if (gw.input_states[GWindower::KEY_LEFT_SHIFT]) {
+                        //                 if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) GetSelectedMapObject()->SetQuat(linalg::qmul(linalg::rotation_quat({delta, 0, 0}, ROTATION_SNAP), *(float4*)GetSelectedMapObject()->mesh_instance->rotation));
+                        //                 else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) GetSelectedMapObject()->SetQuat(linalg::qmul(linalg::rotation_quat({0, 0, delta}, ROTATION_SNAP), *(float4*)GetSelectedMapObject()->mesh_instance->rotation));
+                        //                 else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*2 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*3) GetSelectedMapObject()->SetQuat(linalg::qmul(linalg::rotation_quat({-delta, 0, 0}, ROTATION_SNAP), *(float4*)GetSelectedMapObject()->mesh_instance->rotation));
+                        //                 else GetSelectedMapObject()->SetQuat(linalg::qmul(linalg::rotation_quat({0, 0, -delta}, ROTATION_SNAP), *(float4*)GetSelectedMapObject()->mesh_instance->rotation));
+                        //         }
+                        //         else if (gw.input_states[GWindower::KEY_LEFT_ALT]) GetSelectedMapObject()->SetScale(*(float3*)GetSelectedMapObject()->mesh_instance->scale + float3{0, delta * SCALE_SNAP, 0});
+                        //         else GetSelectedMapObject()->SetPosition(*(float3*)GetSelectedMapObject()->mesh_instance->position + float3{0, delta * POSITION_SNAP, 0});
+                        // }
+                        // const bool right_just_pressed = gw.input_states[GWindower::KEY_RIGHT] && (gw.last_input_states[GWindower::KEY_RIGHT] == false);
+                        // const bool left_just_pressed = gw.input_states[GWindower::KEY_LEFT] && (gw.last_input_states[GWindower::KEY_LEFT] == false);
+                        // if (right_just_pressed || left_just_pressed) {
+                        //         const float delta = -(float)left_just_pressed + (float)right_just_pressed;
+                        //         if (gw.input_states[GWindower::KEY_LEFT_SHIFT]) GetSelectedMapObject()->SetQuat(linalg::qmul(linalg::rotation_quat({0, delta, 0}, -ROTATION_SNAP), *(float4*)GetSelectedMapObject()->mesh_instance->rotation));
+                        //         else if (gw.input_states[GWindower::KEY_LEFT_ALT]) {
+                        //                 if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) GetSelectedMapObject()->SetScale(*(float3*)GetSelectedMapObject()->mesh_instance->scale + float3{delta * SCALE_SNAP, 0, 0});
+                        //                 else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) GetSelectedMapObject()->SetScale(*(float3*)GetSelectedMapObject()->mesh_instance->scale + float3{0, 0, delta * SCALE_SNAP});
+                        //                 else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*2 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*3) GetSelectedMapObject()->SetScale(*(float3*)GetSelectedMapObject()->mesh_instance->scale + float3{delta * SCALE_SNAP, 0, 0});
+                        //                 else GetSelectedMapObject()->SetScale(*(float3*)GetSelectedMapObject()->mesh_instance->scale + float3{0, 0, delta * SCALE_SNAP});
+                        //         }
+                        //         else { if (GetSelectedMapObject()->base_registration->data.position) {
+                        //                 if (camera_yaw_offsetted_45 > 0 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*1) GetSelectedMapObject()->SetPosition(*(float3*)GetSelectedMapObject()->mesh_instance->position + float3{-delta * POSITION_SNAP, 0, 0});
+                        //                 else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*1 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*2) GetSelectedMapObject()->SetPosition(*(float3*)GetSelectedMapObject()->mesh_instance->position + float3{0, 0, -delta * POSITION_SNAP});
+                        //                 else if (camera_yaw_offsetted_45 > (USHRT_MAX/4)*2 && camera_yaw_offsetted_45 < (USHRT_MAX/4)*3) GetSelectedMapObject()->SetPosition(*(float3*)GetSelectedMapObject()->mesh_instance->position + float3{delta * POSITION_SNAP, 0, 0});
+                        //                 else GetSelectedMapObject()->SetPosition(*(float3*)GetSelectedMapObject()->mesh_instance->position + float3{0, 0, delta * POSITION_SNAP});
+                        //         }}
+                        // }
+                }
 
                 static bool show_quit_dialog = false;
 
