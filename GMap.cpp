@@ -423,7 +423,7 @@ int main(int argc, char* argv[]) { try {
                 static GGizmo3D::WidgetIndex active_gizmo_widget = GGizmo3D::WidgetIndex::NONE;
 
                 if (show_ui) {
-                        if (!GetSelectedMapObjects()->empty()) {
+                        if (!GetSelectedMapObjects()->empty()) {  // gizmo
                                 const float3 selected_map_objects_centroid = GetSelectedMapObjectsCentroid();
                                 const float gizmo_scale = linalg::length(selected_map_objects_centroid - *(float3*)gr3d.camera_pos);
                                 GGizmo3D gizmo(
@@ -475,6 +475,7 @@ int main(int argc, char* argv[]) { try {
                         }
                 }
 
+                // select/deselect:
                 if (gw.input_states[GWindower::MOUSEBUTTON_LEFT] && (gw.last_input_states[GWindower::MOUSEBUTTON_LEFT] == false) && !controlling_camera && (active_gizmo_widget == GGizmo3D::WidgetIndex::NONE) && !ImGui::GetIO().WantCaptureMouse) {
                         MapObjectInstance* closest_hit_map_object = nullptr;
                         float closest_hit_map_object_distance = FLT_MAX;
