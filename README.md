@@ -50,6 +50,8 @@ You can pass path to map/scene JSON file as first CLI arg to `GMap` to load it (
 	- 0 = reset camera position to 0, 0, 0
 - Del = delete selected object
 - Alt+D = duplicate selected object
+- MMB = surface snap
+- Alt+MMB = lookat
 
 
 # Example

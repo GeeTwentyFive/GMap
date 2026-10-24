@@ -485,7 +485,7 @@ int main(int argc, char* argv[]) { try {
                                 }
                         }
                         if (closest_hit_map_object_distance != FLT_MAX) {
-                                if (closest_hit_map_object != GetSelectedMapObject()) SetSelectedMapObject(closest_hit_map_object);;
+                                if (closest_hit_map_object != GetSelectedMapObject()) SetSelectedMapObject(closest_hit_map_object);
                         }
                         else SetSelectedMapObject();  // (none hit; deselect)
                 }
