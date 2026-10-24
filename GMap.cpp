@@ -493,7 +493,7 @@ int main(int argc, char* argv[]) { try {
                                         }
                                         if (!was_already_selected) AddSelectedMapObject(closest_hit_map_object);
                                 }
-                                else if (GetSelectedMapObjects()->empty() || closest_hit_map_object != (*GetSelectedMapObjects())[0]) SetSelectedMapObjects({closest_hit_map_object});
+                                else if (GetSelectedMapObjects()->size() != 1 || closest_hit_map_object != (*GetSelectedMapObjects())[0]) SetSelectedMapObjects({closest_hit_map_object});
                         }
                         else if (!gw.input_states[GWindower::KEY_LEFT_SHIFT]) SetSelectedMapObjects({});  // (none hit; deselect)
                 }
@@ -614,85 +614,84 @@ int main(int argc, char* argv[]) { try {
                                 }
                         } ImGui::End();
 
-                        // TODO
-                        // if (GetSelectedMapObject() != nullptr && !selected_map_object_just_changed) {
-                        //         ImGui::SetNextWindowPos({0.0f, 0.0f}, ImGuiCond_Always, {0.0f, 0.0f}); ImGui::SetNextWindowSizeConstraints({0.0f, 0.0f}, {gw.window_width/3.0f, FLT_MAX});
-                        //         ImGui::Begin("INSPECTOR", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
-                        //                 if (GetSelectedMapObject()->base_registration->data.user_model) {
-                        //                         static const char button_label[] = "Model";
-                        //                         if (ImGui::Button(button_label)) GetSelectedMapObject()->SetUserModelAndOrTexture(ShowAndGetPathFromOpenDialog("obj"));
-                        //                         std::string path_label_text = GetSelectedMapObject()->GetUserModel();
-                        //                         if (path_label_text.size() > 32-sizeof(button_label)) path_label_text = "..." + path_label_text.substr(path_label_text.size() - (32-sizeof(button_label)));
-                        //                         ImGui::SameLine();
-                        //                         ImGui::TextUnformatted(path_label_text.c_str(), path_label_text.c_str()+path_label_text.size());
-                        //                 }
-                        //                 if (GetSelectedMapObject()->base_registration->data.user_texture) {
-                        //                         static const char button_label[] = "Texture";
-                        //                         if (ImGui::Button(button_label)) GetSelectedMapObject()->SetUserModelAndOrTexture("", ShowAndGetPathFromOpenDialog("png"));
-                        //                         std::string path_label_text = GetSelectedMapObject()->GetUserTexture();
-                        //                         if (path_label_text.size() > 32-sizeof(button_label)) path_label_text = "..." + path_label_text.substr(path_label_text.size() - (32-sizeof(button_label)));
-                        //                         ImGui::SameLine();
-                        //                         ImGui::TextUnformatted(path_label_text.c_str(), path_label_text.c_str()+path_label_text.size());
-                        //                 }
-                        //                 if (GetSelectedMapObject()->base_registration->data.position) {
-                        //                         float previous_position[3] = {GetSelectedMapObject()->mesh_instance->position[0], GetSelectedMapObject()->mesh_instance->position[1], GetSelectedMapObject()->mesh_instance->position[2]};
-                        //                         if (ImGui::DragFloat3("POSITION", GetSelectedMapObject()->mesh_instance->position, POSITION_SNAP, 0.0f, 0.0f, "%.3f", ImGuiSliderFlags_NoSpeedTweaks)) {
-                        //                                 if (GetSelectedMapObject()->mesh_instance->position[0] != previous_position[0]) GetSelectedMapObject()->mesh_instance->position[0] = std::round(GetSelectedMapObject()->mesh_instance->position[0] / POSITION_SNAP) * POSITION_SNAP;
-                        //                                 if (GetSelectedMapObject()->mesh_instance->position[1] != previous_position[1]) GetSelectedMapObject()->mesh_instance->position[1] = std::round(GetSelectedMapObject()->mesh_instance->position[1] / POSITION_SNAP) * POSITION_SNAP;
-                        //                                 if (GetSelectedMapObject()->mesh_instance->position[2] != previous_position[2]) GetSelectedMapObject()->mesh_instance->position[2] = std::round(GetSelectedMapObject()->mesh_instance->position[2] / POSITION_SNAP) * POSITION_SNAP;
-                        //                         }
-                        //                 }
-                        //                 if (GetSelectedMapObject()->base_registration->data.rotation) {
-                        //                         float3 euler = GetSelectedMapObject()->GetEuler();
-                        //                         float3 previous_euler = euler;
-                        //                         if (ImGui::DragFloat3("ROTATION", (float*)&euler, 1.0f, 0.0f, 0.0f, "%.3f", ImGuiSliderFlags_NoSpeedTweaks)) {
-                        //                                 if (gw.input_states[GWindower::MOUSEBUTTON_LEFT] && (gw.last_input_states[GWindower::MOUSEBUTTON_LEFT] != false)) {
-                        //                                         if (euler.x != previous_euler.x) *(float4*)GetSelectedMapObject()->mesh_instance->rotation = linalg::qmul(linalg::rotation_quat({(euler.x - previous_euler.x), 0, 0}, ROTATION_SNAP), *(float4*)GetSelectedMapObject()->mesh_instance->rotation);
-                        //                                         if (euler.y != previous_euler.y) *(float4*)GetSelectedMapObject()->mesh_instance->rotation = linalg::qmul(linalg::rotation_quat({0, (euler.y - previous_euler.y), 0}, -ROTATION_SNAP), *(float4*)GetSelectedMapObject()->mesh_instance->rotation);
-                        //                                         if (euler.z != previous_euler.z) *(float4*)GetSelectedMapObject()->mesh_instance->rotation = linalg::qmul(linalg::rotation_quat({0, 0, (euler.z - previous_euler.z)}, ROTATION_SNAP), *(float4*)GetSelectedMapObject()->mesh_instance->rotation);
-                        //                                 } else GetSelectedMapObject()->SetEuler(euler);
-                        //                         }
-                        //                 }
-                        //                 if (GetSelectedMapObject()->base_registration->data.scale) {
-                        //                         float previous_scale[3] = {GetSelectedMapObject()->mesh_instance->scale[0], GetSelectedMapObject()->mesh_instance->scale[1], GetSelectedMapObject()->mesh_instance->scale[2]};
-                        //                         if (ImGui::DragFloat3("SCALE", GetSelectedMapObject()->mesh_instance->scale, SCALE_SNAP, 0.0f, 0.0f, "%.3f", ImGuiSliderFlags_NoSpeedTweaks)) {
-                        //                                 if (GetSelectedMapObject()->mesh_instance->scale[0] != previous_scale[0]) GetSelectedMapObject()->mesh_instance->scale[0] = std::round(GetSelectedMapObject()->mesh_instance->scale[0] / SCALE_SNAP) * SCALE_SNAP;
-                        //                                 if (GetSelectedMapObject()->mesh_instance->scale[1] != previous_scale[1]) GetSelectedMapObject()->mesh_instance->scale[1] = std::round(GetSelectedMapObject()->mesh_instance->scale[1] / SCALE_SNAP) * SCALE_SNAP;
-                        //                                 if (GetSelectedMapObject()->mesh_instance->scale[2] != previous_scale[2]) GetSelectedMapObject()->mesh_instance->scale[2] = std::round(GetSelectedMapObject()->mesh_instance->scale[2] / SCALE_SNAP) * SCALE_SNAP;
-                        //                         }
-                        //                 }
-                        //                 if (GetSelectedMapObject()->base_registration->data.color) {
-                        //                         ImVec4 color = ImGui::ColorConvertU32ToFloat4(GetSelectedMapObject()->mesh_instance->color_RGBA);
-                        //                         float _temp;
-                        //                         _temp = color.x; color.x = color.w; color.w = _temp;
-                        //                         _temp = color.y; color.y = color.z; color.z = _temp;
-                        //                         ImGui::ColorPicker4("COLOR", (float*)&color);
-                        //                         _temp = color.x; color.x = color.w; color.w = _temp;
-                        //                         _temp = color.y; color.y = color.z; color.z = _temp;
-                        //                         GetSelectedMapObject()->mesh_instance->color_RGBA = ImGui::ColorConvertFloat4ToU32(color);
-                        //                 }
-                        //                 if (GetSelectedMapObject()->extra_data.size() > 0) { ImGui::NewLine();
-                        //                         uint64_t _uid = 0;
-                        //                         for (auto& [label, val] : GetSelectedMapObject()->extra_data.items()) { ImGui::PushID(_uid); switch (val.type()) { default: break;
-                        //                                 case (nlohmann::json::value_t::boolean): { bool _val = val;
-                        //                                         ImGui::Checkbox(label.c_str(), &_val); val = _val;
-                        //                                 } break;
-                        //                                 case (nlohmann::json::value_t::number_integer): { int64_t _val = val;
-                        //                                         ImGui::InputScalar(label.c_str(), ImGuiDataType_S64, &_val); val = _val;
-                        //                                 } break;
-                        //                                 case (nlohmann::json::value_t::number_unsigned): { uint64_t _val = val;
-                        //                                         ImGui::InputScalar(label.c_str(), ImGuiDataType_U64, &_val); val = _val;
-                        //                                 } break;
-                        //                                 case (nlohmann::json::value_t::number_float): { float _val = val;
-                        //                                         ImGui::InputFloat(label.c_str(), &_val, 0, 0, "%f"); val = _val;
-                        //                                 } break;
-                        //                                 case (nlohmann::json::value_t::string): { std::string _val = val;
-                        //                                         ImGui::InputText(label.c_str(), &_val); val = _val;
-                        //                                 } break;
-                        //                         } ImGui::PopID(); _uid++; }
-                        //                 }
-                        //         } ImGui::End();
-                        // }
+                        if (GetSelectedMapObjects()->size() == 1 && !selected_map_objects_just_changed) {
+                                ImGui::SetNextWindowPos({0.0f, 0.0f}, ImGuiCond_Always, {0.0f, 0.0f}); ImGui::SetNextWindowSizeConstraints({0.0f, 0.0f}, {gw.window_width/3.0f, FLT_MAX});
+                                ImGui::Begin("INSPECTOR", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
+                                        if ((*GetSelectedMapObjects())[0]->base_registration->data.user_model) {
+                                                static const char button_label[] = "Model";
+                                                if (ImGui::Button(button_label)) (*GetSelectedMapObjects())[0]->SetUserModelAndOrTexture(ShowAndGetPathFromOpenDialog("obj"));
+                                                std::string path_label_text = (*GetSelectedMapObjects())[0]->GetUserModel();
+                                                if (path_label_text.size() > 32-sizeof(button_label)) path_label_text = "..." + path_label_text.substr(path_label_text.size() - (32-sizeof(button_label)));
+                                                ImGui::SameLine();
+                                                ImGui::TextUnformatted(path_label_text.c_str(), path_label_text.c_str()+path_label_text.size());
+                                        }
+                                        if ((*GetSelectedMapObjects())[0]->base_registration->data.user_texture) {
+                                                static const char button_label[] = "Texture";
+                                                if (ImGui::Button(button_label)) (*GetSelectedMapObjects())[0]->SetUserModelAndOrTexture("", ShowAndGetPathFromOpenDialog("png"));
+                                                std::string path_label_text = (*GetSelectedMapObjects())[0]->GetUserTexture();
+                                                if (path_label_text.size() > 32-sizeof(button_label)) path_label_text = "..." + path_label_text.substr(path_label_text.size() - (32-sizeof(button_label)));
+                                                ImGui::SameLine();
+                                                ImGui::TextUnformatted(path_label_text.c_str(), path_label_text.c_str()+path_label_text.size());
+                                        }
+                                        if ((*GetSelectedMapObjects())[0]->base_registration->data.position) {
+                                                float previous_position[3] = {(*GetSelectedMapObjects())[0]->mesh_instance->position[0], (*GetSelectedMapObjects())[0]->mesh_instance->position[1], (*GetSelectedMapObjects())[0]->mesh_instance->position[2]};
+                                                if (ImGui::DragFloat3("POSITION", (*GetSelectedMapObjects())[0]->mesh_instance->position, POSITION_SNAP, 0.0f, 0.0f, "%.3f", ImGuiSliderFlags_NoSpeedTweaks)) {
+                                                        if ((*GetSelectedMapObjects())[0]->mesh_instance->position[0] != previous_position[0]) (*GetSelectedMapObjects())[0]->mesh_instance->position[0] = std::round((*GetSelectedMapObjects())[0]->mesh_instance->position[0] / POSITION_SNAP) * POSITION_SNAP;
+                                                        if ((*GetSelectedMapObjects())[0]->mesh_instance->position[1] != previous_position[1]) (*GetSelectedMapObjects())[0]->mesh_instance->position[1] = std::round((*GetSelectedMapObjects())[0]->mesh_instance->position[1] / POSITION_SNAP) * POSITION_SNAP;
+                                                        if ((*GetSelectedMapObjects())[0]->mesh_instance->position[2] != previous_position[2]) (*GetSelectedMapObjects())[0]->mesh_instance->position[2] = std::round((*GetSelectedMapObjects())[0]->mesh_instance->position[2] / POSITION_SNAP) * POSITION_SNAP;
+                                                }
+                                        }
+                                        if ((*GetSelectedMapObjects())[0]->base_registration->data.rotation) {
+                                                float3 euler = (*GetSelectedMapObjects())[0]->GetEuler();
+                                                float3 previous_euler = euler;
+                                                if (ImGui::DragFloat3("ROTATION", (float*)&euler, 1.0f, 0.0f, 0.0f, "%.3f", ImGuiSliderFlags_NoSpeedTweaks)) {
+                                                        if (gw.input_states[GWindower::MOUSEBUTTON_LEFT] && (gw.last_input_states[GWindower::MOUSEBUTTON_LEFT] != false)) {
+                                                                if (euler.x != previous_euler.x) *(float4*)(*GetSelectedMapObjects())[0]->mesh_instance->rotation = linalg::qmul(linalg::rotation_quat({(euler.x - previous_euler.x), 0, 0}, ROTATION_SNAP), *(float4*)(*GetSelectedMapObjects())[0]->mesh_instance->rotation);
+                                                                if (euler.y != previous_euler.y) *(float4*)(*GetSelectedMapObjects())[0]->mesh_instance->rotation = linalg::qmul(linalg::rotation_quat({0, (euler.y - previous_euler.y), 0}, -ROTATION_SNAP), *(float4*)(*GetSelectedMapObjects())[0]->mesh_instance->rotation);
+                                                                if (euler.z != previous_euler.z) *(float4*)(*GetSelectedMapObjects())[0]->mesh_instance->rotation = linalg::qmul(linalg::rotation_quat({0, 0, (euler.z - previous_euler.z)}, ROTATION_SNAP), *(float4*)(*GetSelectedMapObjects())[0]->mesh_instance->rotation);
+                                                        } else (*GetSelectedMapObjects())[0]->SetEuler(euler);
+                                                }
+                                        }
+                                        if ((*GetSelectedMapObjects())[0]->base_registration->data.scale) {
+                                                float previous_scale[3] = {(*GetSelectedMapObjects())[0]->mesh_instance->scale[0], (*GetSelectedMapObjects())[0]->mesh_instance->scale[1], (*GetSelectedMapObjects())[0]->mesh_instance->scale[2]};
+                                                if (ImGui::DragFloat3("SCALE", (*GetSelectedMapObjects())[0]->mesh_instance->scale, SCALE_SNAP, 0.0f, 0.0f, "%.3f", ImGuiSliderFlags_NoSpeedTweaks)) {
+                                                        if ((*GetSelectedMapObjects())[0]->mesh_instance->scale[0] != previous_scale[0]) (*GetSelectedMapObjects())[0]->mesh_instance->scale[0] = std::round((*GetSelectedMapObjects())[0]->mesh_instance->scale[0] / SCALE_SNAP) * SCALE_SNAP;
+                                                        if ((*GetSelectedMapObjects())[0]->mesh_instance->scale[1] != previous_scale[1]) (*GetSelectedMapObjects())[0]->mesh_instance->scale[1] = std::round((*GetSelectedMapObjects())[0]->mesh_instance->scale[1] / SCALE_SNAP) * SCALE_SNAP;
+                                                        if ((*GetSelectedMapObjects())[0]->mesh_instance->scale[2] != previous_scale[2]) (*GetSelectedMapObjects())[0]->mesh_instance->scale[2] = std::round((*GetSelectedMapObjects())[0]->mesh_instance->scale[2] / SCALE_SNAP) * SCALE_SNAP;
+                                                }
+                                        }
+                                        if ((*GetSelectedMapObjects())[0]->base_registration->data.color) {
+                                                ImVec4 color = ImGui::ColorConvertU32ToFloat4((*GetSelectedMapObjects())[0]->mesh_instance->color_RGBA);
+                                                float _temp;
+                                                _temp = color.x; color.x = color.w; color.w = _temp;
+                                                _temp = color.y; color.y = color.z; color.z = _temp;
+                                                ImGui::ColorPicker4("COLOR", (float*)&color);
+                                                _temp = color.x; color.x = color.w; color.w = _temp;
+                                                _temp = color.y; color.y = color.z; color.z = _temp;
+                                                (*GetSelectedMapObjects())[0]->mesh_instance->color_RGBA = ImGui::ColorConvertFloat4ToU32(color);
+                                        }
+                                        if ((*GetSelectedMapObjects())[0]->extra_data.size() > 0) { ImGui::NewLine();
+                                                uint64_t _uid = 0;
+                                                for (auto& [label, val] : (*GetSelectedMapObjects())[0]->extra_data.items()) { ImGui::PushID(_uid); switch (val.type()) { default: break;
+                                                        case (nlohmann::json::value_t::boolean): { bool _val = val;
+                                                                ImGui::Checkbox(label.c_str(), &_val); val = _val;
+                                                        } break;
+                                                        case (nlohmann::json::value_t::number_integer): { int64_t _val = val;
+                                                                ImGui::InputScalar(label.c_str(), ImGuiDataType_S64, &_val); val = _val;
+                                                        } break;
+                                                        case (nlohmann::json::value_t::number_unsigned): { uint64_t _val = val;
+                                                                ImGui::InputScalar(label.c_str(), ImGuiDataType_U64, &_val); val = _val;
+                                                        } break;
+                                                        case (nlohmann::json::value_t::number_float): { float _val = val;
+                                                                ImGui::InputFloat(label.c_str(), &_val, 0, 0, "%f"); val = _val;
+                                                        } break;
+                                                        case (nlohmann::json::value_t::string): { std::string _val = val;
+                                                                ImGui::InputText(label.c_str(), &_val); val = _val;
+                                                        } break;
+                                                } ImGui::PopID(); _uid++; }
+                                        }
+                                } ImGui::End();
+                        }
 
                         static bool show_extra_info = false;
                         if (gw.input_states[GWindower::KEY_LEFT_ALT] && gw.input_states[GWindower::KEY_I] && (gw.last_input_states[GWindower::KEY_I] == false)) show_extra_info = !show_extra_info;
