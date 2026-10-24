@@ -588,8 +588,10 @@ int main(int argc, char* argv[]) { try {
 
                 if (show_quit_dialog) show_ui = true;
 
+                if (show_ui) { ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame(); ImGui::NewFrame(); if (controlling_camera || (gw.input_states[GWindower::MOUSEBUTTON_LEFT] && !ImGui::GetIO().WantCaptureMouse)) ImGui::SetWindowFocus(); /* (unfocus GUI if controlling camera or clicked off) */ }
+
                 if (show_ui) { if (GetSelectedMapObject() != nullptr) { const gcollision2::AABB aabb = GetSelectedMapObject()->WorldAABB(); glr3d.DrawBox(aabb.min.x, aabb.min.y, aabb.min.z, aabb.max.x, aabb.max.y, aabb.max.z); }
-                        ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame(); ImGui::NewFrame(); if (controlling_camera || (gw.input_states[GWindower::MOUSEBUTTON_LEFT] && !ImGui::GetIO().WantCaptureMouse)) ImGui::SetWindowFocus(); /* (unfocus GUI if controlling camera or clicked off) */ ImGui::SetNextWindowPos({0.0f, (float)gw.window_height}, ImGuiCond_Always, {0.0f, 1.0f}); ImGui::Begin("USAGE", NULL, (ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); { ImGui::TextUnformatted(USAGE_TEXT, USAGE_TEXT+sizeof(USAGE_TEXT)); } ImGui::End();
+                        ImGui::SetNextWindowPos({0.0f, (float)gw.window_height}, ImGuiCond_Always, {0.0f, 1.0f}); ImGui::Begin("USAGE", NULL, (ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); { ImGui::TextUnformatted(USAGE_TEXT, USAGE_TEXT+sizeof(USAGE_TEXT)); } ImGui::End();
 
                         ImGui::SetNextWindowPos({(float)gw.window_width, 0.0f}, ImGuiCond_Always, {1.0f, 0.0f}); ImGui::SetNextWindowSizeConstraints({0.0f, 0.0f}, {gw.window_width/3.0f, FLT_MAX});
                         ImGui::Begin("ADD", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
