@@ -503,11 +503,11 @@ int main(int argc, char* argv[]) { try {
                         }
                         else if (!gw.input_states[GWindower::KEY_LEFT_CONTROL]) SetSelectedMapObjects({});  // (none hit; deselect)
                 }
-                if (gw.input_states[GWindower::KEY_LEFT_CONTROL] && gw.input_states[GWindower::KEY_A] && (gw.last_input_states[GWindower::KEY_A] == false)) {
+                if (gw.input_states[GWindower::KEY_LEFT_CONTROL] && gw.input_states[GWindower::KEY_A] && (gw.last_input_states[GWindower::KEY_A] == false) && !controlling_camera) {
                         SetSelectedMapObjects({});
                         for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) AddSelectedMapObject(map_object_instance.get());
                 }
-                if (gw.input_states[GWindower::KEY_LEFT_CONTROL] && gw.input_states[GWindower::KEY_X] && (gw.last_input_states[GWindower::KEY_X] == false)) SetSelectedMapObjects({});
+                if (gw.input_states[GWindower::KEY_LEFT_CONTROL] && gw.input_states[GWindower::KEY_X] && (gw.last_input_states[GWindower::KEY_X] == false) && !controlling_camera) SetSelectedMapObjects({});
 
                 if (!GetSelectedMapObjects()->empty()) {
                         if (gw.input_states[GWindower::KEY_LEFT_ALT] && gw.input_states[GWindower::KEY_C] && (gw.last_input_states[GWindower::KEY_C] == false)) {
