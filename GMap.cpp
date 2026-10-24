@@ -525,29 +525,30 @@ int main(int argc, char* argv[]) { try {
 
                         if (gw.input_states[GWindower::MOUSEBUTTON_MIDDLE]) {
                                 if (gw.input_states[GWindower::KEY_LEFT_ALT]) {  // lookat
-                                        // TODO
-                                        // float3 target_point;
-                                        // float closest_hit_map_object_distance = FLT_MAX;
-                                        // for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) { if (map_object_instance.get() == GetSelectedMapObject()) continue;  // (ignore selected obj)
-                                        //         gcollision2::AABB map_object_instance_aabb = map_object_instance->WorldAABB();
-                                        //         float hit_map_object_distance;
-                                        //         float3 hit_map_object_point;
-                                        //         if (gcollision2::IntersectRayAABB(
-                                        //                 float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]},
-                                        //                 GMisc3DMath::ScreenToWorldRay(gw.cursor_x, gw.cursor_y, gw.window_width, gw.window_height, (float4x4*)gr3d.ViewProjection()),
-                                        //                 map_object_instance_aabb, &hit_map_object_distance,
-                                        //                 &hit_map_object_point
-                                        //         )) if (hit_map_object_distance < closest_hit_map_object_distance) { closest_hit_map_object_distance = hit_map_object_distance;
-                                        //                 target_point = hit_map_object_point;
-                                        //         }
-                                        // }
-                                        // if (closest_hit_map_object_distance != FLT_MAX) {
-                                        //         const float4x4 lookat_matrix = linalg::lookat_matrix(
-                                        //                 float3{GetSelectedMapObject()->mesh_instance->position[0], GetSelectedMapObject()->mesh_instance->position[1], GetSelectedMapObject()->mesh_instance->position[2]},
-                                        //                 target_point, float3{0, 1, 0}, linalg::fwd_axis::pos_z
-                                        //         );
-                                        //         GetSelectedMapObject()->SetQuat(linalg::rotation_quat(float3x3{lookat_matrix.row(0).xyz(), lookat_matrix.row(1).xyz(), lookat_matrix.row(2).xyz()}));
-                                        // }
+                                        float3 target_point;
+                                        float closest_hit_map_object_distance = FLT_MAX;
+                                        for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) { if (std::find(GetSelectedMapObjects()->begin(), GetSelectedMapObjects()->end(), map_object_instance.get()) != GetSelectedMapObjects()->end()) continue;  // (ignore selected objs)
+                                                gcollision2::AABB map_object_instance_aabb = map_object_instance->WorldAABB();
+                                                float hit_map_object_distance;
+                                                float3 hit_map_object_point;
+                                                if (gcollision2::IntersectRayAABB(
+                                                        float3{gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]},
+                                                        GMisc3DMath::ScreenToWorldRay(gw.cursor_x, gw.cursor_y, gw.window_width, gw.window_height, (float4x4*)gr3d.ViewProjection()),
+                                                        map_object_instance_aabb, &hit_map_object_distance,
+                                                        &hit_map_object_point
+                                                )) if (hit_map_object_distance < closest_hit_map_object_distance) { closest_hit_map_object_distance = hit_map_object_distance;
+                                                        target_point = hit_map_object_point;
+                                                }
+                                        }
+                                        if (closest_hit_map_object_distance != FLT_MAX) {
+                                                for (MapObjectInstance* selected_map_object : *GetSelectedMapObjects()) {
+                                                        const float4x4 lookat_matrix = linalg::lookat_matrix(
+                                                                float3{selected_map_object->mesh_instance->position[0], selected_map_object->mesh_instance->position[1], selected_map_object->mesh_instance->position[2]},
+                                                                target_point, float3{0, 1, 0}, linalg::fwd_axis::pos_z
+                                                        );
+                                                        selected_map_object->SetQuat(linalg::rotation_quat(float3x3{lookat_matrix.row(0).xyz(), lookat_matrix.row(1).xyz(), lookat_matrix.row(2).xyz()}));
+                                                }
+                                        }
                                 }
                                 else if (GetSelectedMapObjects()->size() == 1 && (*GetSelectedMapObjects())[0]->base_registration->data.position) {  // surface snap
                                         float3 target_point, target_normal;
