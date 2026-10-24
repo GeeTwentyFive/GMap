@@ -44,14 +44,14 @@ You can pass path to map/scene JSON file as first CLI arg to `GMap` to load it (
 	- Mouse = rotate camera
 	- WASD, Space, CTRL = move camera
 	- Scroll = change camera move speed
-	- (CTRL+)Click = select/deselect object(s)
 	- 0 = reset camera position to 0, 0, 0
-- +Shift = rotate mode (for gizmo, arrows, ...)
-- +Alt = scale mode (for gizmo, arrows, ...)
+- (CTRL+)Click = select/deselect object(s)
+- +Shift / +Alt = rotate / scale mode
+- Alt+C = clone selected object(s)
 - Del = delete selected object(s)
-- Alt+D = duplicate selected object(s)
 - MMB = surface snap
 - Alt+MMB = lookat
+- Arrow keys = move / (+Shift) rotate / (+Alt) scale
 - CTRL+A = select all, X = deselect all
 
 
