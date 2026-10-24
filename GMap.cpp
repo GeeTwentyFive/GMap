@@ -372,7 +372,7 @@ int main(int argc, char* argv[]) { try {
         auto GetSelectedMapObject = [&]() -> MapObjectInstance* { return _selected_map_object; };
 
         glClearColor(0.0, 0.0, 0.0, 1.0);
-        GFramePacer gfp; gfp.target_frametime_ms = 1.0;  // (frame limiting itself not needed because using v-sync (and wait-until-input), using lib for other frame-pacing-related benefits)
+        GFramePacer gfp;  // (frame limiting itself not needed because using v-sync (and wait-until-input), using lib for other frame-pacing-related benefits)
         for (;;) { // MAIN LOOP
                 double delta_time = gfp.Wait();
 
