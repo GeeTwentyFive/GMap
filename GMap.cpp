@@ -74,8 +74,6 @@ const char USAGE_TEXT[] = ""
 "";
 
 
-bool IsValueInJSONArray(nlohmann::json value, nlohmann::json array) { return (std::find(array.begin(), array.end(), value) != array.end()); };
-
 int main(int argc, char* argv[]) { try {
         nlohmann::json stdin_json_array = nlohmann::json::parse(std::string(std::istreambuf_iterator<char>(std::cin), std::istreambuf_iterator<char>())); if (stdin_json_array.type() != nlohmann::json::value_t::array) throw std::runtime_error("stdin is not a JSON array (read 'README.md')"); if (stdin_json_array.size() == 0) throw std::runtime_error("stdin JSON array is empty");
         struct MapObjectRegistration {
@@ -97,6 +95,7 @@ int main(int argc, char* argv[]) { try {
                 MapObjectRegistration* registration = &map_object_registrations.emplace(map_object["name"], MapObjectRegistration{}).first->second;
                 registration->name = map_object["name"]; map_object_names.push_back(registration->name);
                 registration->model = std::filesystem::path(map_object["model"]).lexically_normal().generic_string();
+                static auto IsValueInJSONArray = [](nlohmann::json value, nlohmann::json array) { return (std::find(array.begin(), array.end(), value) != array.end()); };
                 if (map_object.contains("data")) {
                         if (IsValueInJSONArray("position", map_object["data"])) registration->data.position = true;
                         if (IsValueInJSONArray("rotation", map_object["data"])) registration->data.rotation = true;
