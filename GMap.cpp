@@ -509,7 +509,7 @@ int main(int argc, char* argv[]) { try {
                         SetSelectedMapObjects({});
                         for (const std::unique_ptr<MapObjectInstance>& map_object_instance : map_object_instances) AddSelectedMapObject(map_object_instance.get());
                 }
-                if (gw.input_states[GWindower::KEY_X] && (gw.last_input_states[GWindower::KEY_X] == false) && !controlling_camera) SetSelectedMapObjects({});
+                if (gw.input_states[GWindower::KEY_LEFT_CONTROL] && gw.input_states[GWindower::KEY_X] && (gw.last_input_states[GWindower::KEY_X] == false) && !controlling_camera) SetSelectedMapObjects({});
 
                 if (!GetSelectedMapObjects()->empty()) {
                         if (gw.input_states[GWindower::KEY_LEFT_ALT] && gw.input_states[GWindower::KEY_C] && (gw.last_input_states[GWindower::KEY_C] == false)) {
@@ -632,7 +632,11 @@ int main(int argc, char* argv[]) { try {
                         ImGui::SetNextWindowPos({(float)gw.window_width, 0.0f}, ImGuiCond_Always, {1.0f, 0.0f}); ImGui::SetNextWindowSizeConstraints({0.0f, 0.0f}, {gw.window_width/3.0f, FLT_MAX});
                         ImGui::Begin("ADD", NULL, (ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)); {
                                 for (const std::string& name : map_object_names) {
-                                        if (ImGui::Button(name.c_str())) AddSelectedMapObject(MapObjectInstance::Create(name, gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]));
+                                        if (ImGui::Button(name.c_str())) {
+                                                MapObjectInstance* new_map_object_instance = MapObjectInstance::Create(name, gr3d.camera_pos[0], gr3d.camera_pos[1], gr3d.camera_pos[2]);
+                                                if (gw.input_states[GWindower::KEY_LEFT_CONTROL]) AddSelectedMapObject(new_map_object_instance);
+                                                else SetSelectedMapObjects({new_map_object_instance});
+                                        }
                                 }
                         } ImGui::End();
 

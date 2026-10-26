@@ -53,7 +53,7 @@ You can pass path to map/scene JSON file as first CLI arg to `GMap` to load it (
 - Alt+MMB = lookat
 - Arrow keys = move / (+Shift) rotate / (+Alt) scale
 - CTRL+A = select all
-- X = deselect all
+- CTRL+X = deselect all
 - Alt+I = show extra info
 
 
