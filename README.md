@@ -52,7 +52,9 @@ You can pass path to map/scene JSON file as first CLI arg to `GMap` to load it (
 - MMB = surface snap
 - Alt+MMB = lookat
 - Arrow keys = move / (+Shift) rotate / (+Alt) scale
-- CTRL+A = select all, X = deselect all
+- CTRL+A = select all
+- X = deselect all
+- Alt+I = show extra info
 
 
 # Example
